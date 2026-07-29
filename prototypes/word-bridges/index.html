@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Bridges</title>
+<style>
+  :root {
+    --bg: #eef3f8; --text: #17293c; --muted: #64798e;
+    --card: #ffffff; --border: #cddae8; --line: #2b6cb0;
+    --pier: #17293c; --pier-text: #eef3f8; --good: #21804d;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101c28; --text: #dfe9f2; --muted: #7f95a9;
+      --card: #182634; --border: #2b3d4f; --line: #64a4e0;
+      --pier: #dfe9f2; --pier-text: #101c28; --good: #4fbe7f;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eef3f8; --text: #17293c; --muted: #64798e;
+    --card: #ffffff; --border: #cddae8; --line: #2b6cb0;
+    --pier: #17293c; --pier-text: #eef3f8; --good: #21804d;
+  }
+  :root[data-theme="dark"] {
+    --bg: #101c28; --text: #dfe9f2; --muted: #7f95a9;
+    --card: #182634; --border: #2b3d4f; --line: #64a4e0;
+    --pier: #dfe9f2; --pier-text: #101c28; --good: #4fbe7f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 540px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 6px; }
+  .howto { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; font-style: italic; }
+  .toolbar { margin-bottom: 14px; }
+  select {
+    font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer;
+  }
+  .bridge { display: flex; flex-direction: column; align-items: center; gap: 0; margin-bottom: 16px; }
+  .word-slot {
+    min-width: 210px; padding: 12px 18px; border-radius: 10px; font-weight: 800;
+    font-size: 1.15rem; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .word-slot.pier { background: var(--pier); color: var(--pier-text); }
+  .word-slot.gap { background: var(--card); border: 2px dashed var(--line); color: var(--muted); font-weight: 600; letter-spacing: 0.25em; }
+  .word-slot.solved { background: var(--card); border: 2px solid var(--good); color: var(--text); }
+  .word-slot.active { border-style: solid; color: var(--text); }
+  .link { width: 3px; height: 18px; background: var(--line); }
+  .compound-hint { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.02em; text-transform: none; font-weight: 400; margin-top: 2px; }
+  .guess-row { display: flex; gap: 8px; max-width: 380px; margin: 0 auto 8px; }
+  #guess-input {
+    flex: 1; font: inherit; font-size: 1rem; padding: 11px 14px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  #guess-input:focus { outline: 2px solid var(--line); }
+  .guess-row button {
+    font: inherit; font-weight: 800; padding: 11px 20px; border-radius: 10px;
+    border: none; background: var(--line); color: #fff; cursor: pointer;
+  }
+  .aux button {
+    font: inherit; font-size: 0.85rem; padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--muted); cursor: pointer; margin: 0 4px;
+  }
+  .feedback { min-height: 1.5em; font-weight: 700; margin-top: 8px; }
+  .feedback.good { color: var(--good); }
+  .feedback.miss { color: var(--line); }
+  .endbox { margin-top: 10px; }
+  .endbox .big { font-weight: 800; font-size: 1.05rem; margin-bottom: 8px; }
+  .recap {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 16px; text-align: left; font-size: 0.92rem; line-height: 1.6;
+  }
+  .recap strong { color: var(--line); }
+  .endbox button.pill {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; margin: 8px 4px 0;
+  }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>&#127753; Word Bridges</h1>
+  <p class="subtitle">Every neighbouring pair makes a compound word. Fill the missing spans.</p>
+  <p class="howto">BIRTH + DAY = birthday &nbsp;·&nbsp; DAY + LIGHT = daylight…</p>
+
+  <div class="toolbar">
+    <select id="puzzle-select" aria-label="Choose bridge"></select>
+  </div>
+
+  <div class="bridge" id="bridge"></div>
+
+  <div id="controls">
+    <div class="guess-row">
+      <input id="guess-input" type="text" autocomplete="off" placeholder="Next span…">
+      <button id="guess-btn">Build</button>
+    </div>
+    <div class="aux">
+      <button id="hint-btn">Reveal first letter</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="endbox" id="endbox"></div>
+
+  <footer>Learning Games — prototype 10 · bridges are editable in this file</footer>
+</div>
+
+<script>
+/* ============ BRIDGES — edit or add here ============
+   chain:  the words; first and last are given, middles are guessed
+   glosses: meaning of each compound (chain.length - 1 entries) */
+const BRIDGES = [
+  { chain: ["BIRTH", "DAY", "LIGHT", "HOUSE"],
+    glosses: ["birthday — your special day once a year", "daylight — the natural light of the day", "lighthouse — the tower that warns ships"] },
+  { chain: ["SUN", "FLOWER", "POT", "LUCK"],
+    glosses: ["sunflower — the tall yellow flower that follows the sun", "flowerpot — the container a plant grows in", "potluck — a meal where every guest brings a dish"] },
+  { chain: ["BED", "TIME", "TABLE", "SPOON"],
+    glosses: ["bedtime — the hour you go to sleep", "timetable — the schedule of classes or trains", "tablespoon — the big spoon, for cooking measures"] },
+  { chain: ["FOOT", "BALL", "ROOM", "MATE"],
+    glosses: ["football — the world's favourite game", "ballroom — a grand room for dancing", "roommate — the person you share a flat with"] },
+  { chain: ["RAIN", "BOW", "TIE", "BREAK"],
+    glosses: ["rainbow — the arch of colours after rain", "bow tie — the fancy tie shaped like a bow", "tie-break — the decider when the score is level"] },
+  { chain: ["FIRE", "WORK", "SHOP", "KEEPER"],
+    glosses: ["firework — the exploding lights on New Year's Eve", "workshop — the place where things are made (or a training session)", "shopkeeper — the person who runs a small shop"] }
+];
+/* ============ end of bridges ============ */
+
+let b = null, solvedTo = 0, hintsUsed = 0, misses = 0;
+const $ = (id) => document.getElementById(id);
+
+function load(i) {
+  b = BRIDGES[i];
+  solvedTo = 0; hintsUsed = 0; misses = 0;   // solvedTo counts solved GAP words
+  $("endbox").innerHTML = "";
+  $("controls").classList.remove("hidden");
+  $("feedback").textContent = "";
+  $("guess-input").value = "";
+  render();
+  $("guess-input").focus();
+}
+
+function gapIndices() { return b.chain.map((_, i) => i).filter(i => i > 0 && i < b.chain.length - 1); }
+function activeGap() { return gapIndices()[solvedTo]; }
+
+function render() {
+  const bridge = $("bridge");
+  bridge.innerHTML = "";
+  const gaps = gapIndices();
+  b.chain.forEach((word, i) => {
+    if (i > 0) {
+      const link = document.createElement("div");
+      link.className = "link";
+      bridge.appendChild(link);
+    }
+    const slot = document.createElement("div");
+    const isGap = gaps.includes(i);
+    const gapPos = gaps.indexOf(i);
+    if (!isGap) {
+      slot.className = "word-slot pier";
+      slot.textContent = word;
+    } else if (gapPos < solvedTo) {
+      slot.className = "word-slot solved";
+      slot.textContent = word;
+    } else {
+      slot.className = "word-slot gap" + (gapPos === solvedTo ? " active" : "");
+      const shown = (gapPos === solvedTo && hintsUsed > 0)
+        ? word[0] + " " + "_ ".repeat(word.length - 1).trim()
+        : "_ ".repeat(word.length).trim();
+      slot.textContent = shown;
+      const hint = document.createElement("div");
+      hint.className = "compound-hint";
+      hint.textContent = word.length + " letters" + (gapPos === solvedTo ? " — joins both neighbours" : "");
+      slot.appendChild(hint);
+    }
+    bridge.appendChild(slot);
+  });
+}
+
+function submitGuess() {
+  const idx = activeGap();
+  if (idx === undefined) return;
+  const raw = $("guess-input").value.trim().toUpperCase();
+  $("guess-input").value = "";
+  if (!raw) return;
+  if (raw === b.chain[idx]) {
+    solvedTo++;
+    hintsUsed = 0;
+    $("feedback").textContent = "The span holds!";
+    $("feedback").className = "feedback good";
+    render();
+    if (activeGap() === undefined) finish();
+  } else {
+    misses++;
+    $("feedback").textContent = "“" + raw.toLowerCase() + "” doesn't join both neighbours. Think compound words!";
+    $("feedback").className = "feedback miss";
+  }
+  $("guess-input").focus();
+}
+
+function finish() {
+  $("controls").classList.add("hidden");
+  const box = $("endbox");
+  const big = document.createElement("div");
+  big.className = "big";
+  big.textContent = misses === 0 ? "Bridge complete — solid engineering! \u{1F389}" : "Bridge complete after " + misses + " wobbly attempt" + (misses > 1 ? "s" : "") + "!";
+  box.appendChild(big);
+  const recap = document.createElement("div");
+  recap.className = "recap";
+  recap.innerHTML = b.glosses.map(g => {
+    const [word, rest] = g.split(" — ");
+    return "<div><strong>" + word + "</strong> — " + rest + "</div>";
+  }).join("");
+  box.appendChild(recap);
+  const share = document.createElement("button");
+  share.className = "pill";
+  share.textContent = "Copy result";
+  const text = "Word Bridges — " + b.chain.join("·") + (misses === 0 ? " (no misses!)" : " (" + misses + " misses)");
+  share.onclick = () => navigator.clipboard.writeText(text).then(() => { share.textContent = "Copied!"; }, () => {});
+  box.appendChild(share);
+  const next = document.createElement("button");
+  next.className = "pill";
+  const i = BRIDGES.indexOf(b);
+  next.textContent = i + 1 < BRIDGES.length ? "Next bridge" : "First bridge";
+  next.onclick = () => { const n = (i + 1) % BRIDGES.length; $("puzzle-select").value = n; load(n); };
+  box.appendChild(next);
+}
+
+/* ---- init ---- */
+const sel = $("puzzle-select");
+BRIDGES.forEach((bb, i) => {
+  const o = document.createElement("option");
+  o.value = i;
+  o.textContent = "Bridge " + (i + 1) + ": " + bb.chain[0] + " → " + bb.chain[bb.chain.length - 1];
+  sel.appendChild(o);
+});
+sel.onchange = () => load(Number(sel.value));
+$("guess-btn").onclick = submitGuess;
+$("guess-input").addEventListener("keydown", e => { if (e.key === "Enter") submitGuess(); });
+$("hint-btn").onclick = () => { hintsUsed = 1; render(); };
+const params = new URLSearchParams(location.search);
+const start = params.has("p") ? Math.min(Math.max(Number(params.get("p")) - 1, 0), BRIDGES.length - 1) : 0;
+load(start);
+sel.value = start;
+</script>
+</body>
+</html>

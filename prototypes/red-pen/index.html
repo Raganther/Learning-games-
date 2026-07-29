@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Red Pen</title>
+<style>
+  :root {
+    --bg: #f6f3ec; --text: #2a2622; --muted: #8c8375;
+    --paper: #fffdf7; --border: #e2dccd; --red: #c0392b;
+    --good: #27784a; --stamp: #27784a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1915; --text: #ece7dd; --muted: #9c927f;
+      --paper: #262219; --border: #3f382b; --red: #e05a4b;
+      --good: #4fb377; --stamp: #4fb377;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f6f3ec; --text: #2a2622; --muted: #8c8375;
+    --paper: #fffdf7; --border: #e2dccd; --red: #c0392b;
+    --good: #27784a; --stamp: #27784a;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1915; --text: #ece7dd; --muted: #9c927f;
+    --paper: #262219; --border: #3f382b; --red: #e05a4b;
+    --good: #4fb377; --stamp: #4fb377;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 560px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  h1 .pen { color: var(--red); }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; font-style: italic; }
+  .hud { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 12px; font-variant-numeric: tabular-nums; font-family: -apple-system, sans-serif; }
+  .hud .clean { color: var(--good); }
+  .paper {
+    background: var(--paper); border: 1px solid var(--border); border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    padding: 28px 22px 22px; margin-bottom: 12px; text-align: left; position: relative;
+  }
+  .paper .memo { font-size: 0.75rem; color: var(--muted); letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 14px; font-family: -apple-system, sans-serif; }
+  .sentence { font-size: 1.25rem; line-height: 1.8; }
+  .sentence .tok { cursor: pointer; border-radius: 4px; padding: 1px 3px; }
+  .sentence .tok:hover { background: color-mix(in srgb, var(--red) 14%, transparent); }
+  .sentence .tok.struck { color: var(--red); text-decoration: line-through 2px; cursor: default; }
+  .sentence .tok.oops { animation: shake 0.35s ease; background: color-mix(in srgb, var(--red) 20%, transparent); }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .correction {
+    color: var(--red); font-size: 1rem; margin-top: 10px; min-height: 1.4em; font-style: italic;
+  }
+  .verdict-note { font-family: -apple-system, sans-serif; font-size: 0.9rem; color: var(--muted); margin-top: 6px; line-height: 1.5; min-height: 2.6em; }
+  .stamp {
+    position: absolute; top: 14px; right: 16px; transform: rotate(-12deg);
+    border: 3px solid var(--stamp); color: var(--stamp); border-radius: 6px;
+    padding: 3px 10px; font-weight: 800; font-size: 0.85rem; letter-spacing: 0.12em;
+    text-transform: uppercase; font-family: -apple-system, sans-serif; opacity: 0.9;
+  }
+  .stamp.rejected { border-color: var(--red); color: var(--red); }
+  .actions { display: flex; gap: 10px; justify-content: center; font-family: -apple-system, sans-serif; }
+  .actions button {
+    font: inherit; font-weight: 700; font-size: 0.95rem; padding: 12px 22px;
+    border-radius: 999px; cursor: pointer;
+  }
+  #approve-btn { background: var(--paper); color: var(--good); border: 2px solid var(--good); }
+  #next-btn { background: var(--text); color: var(--bg); border: 2px solid var(--text); }
+  .actions button:disabled { opacity: 0.35; cursor: default; }
+  .hint-text { color: var(--muted); font-size: 0.85rem; margin-top: 10px; font-style: italic; }
+  .endbox h2 { margin: 4px 0; }
+  .endbox .score { font-size: 2rem; font-weight: 800; color: var(--red); font-family: -apple-system, sans-serif; }
+  .endbox button {
+    font: inherit; font-weight: 700; padding: 11px 24px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--paper); color: var(--text); cursor: pointer; margin: 4px;
+  }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Red Pen <span class="pen">&#10002;</span></h1>
+  <p class="subtitle">You're the editor. Click the wrong word — or approve the sentence if it's clean.</p>
+
+  <div class="hud">
+    <span id="progress">1/10</span>
+    <span class="clean" id="score">0 clean edits</span>
+  </div>
+
+  <div class="paper" id="paper">
+    <div class="memo">Manuscript — for review</div>
+    <div class="sentence" id="sentence"></div>
+    <div class="correction" id="correction"></div>
+    <div class="verdict-note" id="verdict-note"></div>
+  </div>
+
+  <div class="actions">
+    <button id="approve-btn">&#10004; Approve as written</button>
+    <button id="next-btn" disabled>Next manuscript</button>
+  </div>
+  <p class="hint-text">Every sentence has exactly one error — or none at all. Trust your eye.</p>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 13 · manuscripts are editable in this file</footer>
+</div>
+
+<script>
+/* ============ MANUSCRIPTS — edit or add here ============
+   words: the sentence, tokenised
+   err:   indexes of the wrong word(s) — empty array = correct sentence
+   fix:   what the red pen writes
+   note:  the grammar explanation */
+const MANUSCRIPTS = [
+  { words: ["She", "don't", "like", "coffee."], err: [1], fix: "don't → doesn't",
+    note: "Third person singular: she/he/it + doesn't. “She doesn't like coffee.”" },
+  { words: ["I", "visited", "Paris", "last", "year."], err: [], fix: "",
+    note: "Clean! Past simple + a finished time (“last year”) is the right combination." },
+  { words: ["He", "is", "more", "taller", "than", "his", "brother."], err: [2], fix: "delete “more”",
+    note: "Short adjectives take -er OR “more” — never both. “Taller”, full stop." },
+  { words: ["We", "discussed", "about", "the", "plan", "yesterday."], err: [2], fix: "delete “about”",
+    note: "“Discuss” already contains the about. You discuss the plan. (But you DO talk about it.)" },
+  { words: ["Everyone", "was", "excited", "about", "the", "trip."], err: [], fix: "",
+    note: "Clean! “Everyone” looks plural but takes a singular verb: everyone WAS." },
+  { words: ["I", "am", "living", "here", "since", "2020."], err: [1, 2], fix: "am living → have been living",
+    note: "“Since 2020” reaches from the past until now — that needs the present perfect: “I have been living here since 2020.”" },
+  { words: ["She", "gave", "me", "a", "good", "advice."], err: [3], fix: "delete “a” (or: some good advice)",
+    note: "“Advice” is uncountable — no “a”. Same family: information, furniture, news, homework." },
+  { words: ["I", "didn't", "saw", "him", "at", "the", "party."], err: [2], fix: "saw → see",
+    note: "After “didn't”, the verb goes back to base form. The past is already inside “did”." },
+  { words: ["The", "children", "was", "playing", "outside."], err: [2], fix: "was → were",
+    note: "“Children” is already plural (child → children) — so it needs “were”." },
+  { words: ["It", "depends", "of", "the", "weather."], err: [2], fix: "of → on",
+    note: "Depend ON — always. A classic false friend of “depende de” / “dépend de”." }
+];
+/* ============ end of manuscripts ============ */
+
+let order = [], current = 0, cleanEdits = 0, resolved = false, blemished = false;
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle(MANUSCRIPTS);
+  current = 0; cleanEdits = 0;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("paper").classList.remove("hidden");
+  document.querySelector(".actions").classList.remove("hidden");
+  document.querySelector(".hint-text").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  showRound();
+}
+
+function showRound() {
+  const m = order[current];
+  resolved = false; blemished = false;
+  $("progress").textContent = (current + 1) + "/" + order.length;
+  $("score").textContent = cleanEdits + " clean edit" + (cleanEdits === 1 ? "" : "s");
+  $("correction").textContent = "";
+  $("verdict-note").textContent = "";
+  $("approve-btn").disabled = false;
+  $("next-btn").disabled = true;
+  const stamp = document.querySelector(".stamp");
+  if (stamp) stamp.remove();
+  const s = $("sentence");
+  s.innerHTML = "";
+  m.words.forEach((w, i) => {
+    const tok = document.createElement("span");
+    tok.className = "tok";
+    tok.textContent = w;
+    tok.onclick = () => clickWord(i, tok);
+    s.appendChild(tok);
+    s.appendChild(document.createTextNode(" "));
+  });
+}
+
+function clickWord(i, tok) {
+  if (resolved) return;
+  const m = order[current];
+  if (m.err.includes(i)) {
+    resolve(true);
+    m.err.forEach(idx => $("sentence").children[idx].classList.add("struck"));
+    $("correction").textContent = "✍️ " + m.fix;
+    addStamp("Corrected", false);
+  } else {
+    blemished = true;
+    tok.classList.add("oops");
+    setTimeout(() => tok.classList.remove("oops"), 380);
+    $("verdict-note").textContent = "That word is innocent. Look again…";
+  }
+}
+
+function approve() {
+  if (resolved) return;
+  const m = order[current];
+  if (m.err.length === 0) {
+    resolve(true);
+    addStamp("Approved", false);
+  } else {
+    blemished = true;
+    resolve(false);
+    m.err.forEach(idx => $("sentence").children[idx].classList.add("struck"));
+    $("correction").textContent = "✍️ " + m.fix;
+    addStamp("Error missed", true);
+  }
+}
+
+function resolve(success) {
+  resolved = true;
+  const m = order[current];
+  if (success && !blemished) cleanEdits++;
+  $("score").textContent = cleanEdits + " clean edit" + (cleanEdits === 1 ? "" : "s");
+  $("verdict-note").textContent = m.note;
+  $("approve-btn").disabled = true;
+  $("next-btn").disabled = false;
+  $("next-btn").textContent = current + 1 >= order.length ? "See results" : "Next manuscript";
+}
+
+function addStamp(text, rejected) {
+  const stamp = document.createElement("div");
+  stamp.className = "stamp" + (rejected ? " rejected" : "");
+  stamp.textContent = text;
+  $("paper").appendChild(stamp);
+}
+
+function next() {
+  current++;
+  if (current >= order.length) { endGame(); return; }
+  showRound();
+}
+
+function endGame() {
+  $("paper").classList.add("hidden");
+  document.querySelector(".actions").classList.add("hidden");
+  document.querySelector(".hint-text").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  let rating;
+  if (cleanEdits === order.length) rating = "Editor-in-chief material. Not a single wasted stroke of the pen.";
+  else if (cleanEdits >= 7) rating = "Senior editor — authors fear your pen, rightly.";
+  else if (cleanEdits >= 4) rating = "Junior editor — sharp instincts, occasional ink stains.";
+  else rating = "The intern years. Reread the notes; the pen will obey eventually.";
+  box.innerHTML = "<h2>Deadline met</h2>" +
+    "<p class='score'>" + cleanEdits + "/" + order.length + "</p>" +
+    "<p>manuscripts resolved without a wasted stroke</p><p></p>" +
+    "<p><button id='again-btn'>New stack of manuscripts</button> " +
+    "<button id='share-btn'>Copy result</button></p>";
+  box.querySelectorAll("p")[2].textContent = rating;
+  $("again-btn").onclick = startGame;
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Red Pen — " + cleanEdits + "/" + order.length + " clean edits").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+$("approve-btn").onclick = approve;
+$("next-btn").onclick = next;
+startGame();
+</script>
+</body>
+</html>

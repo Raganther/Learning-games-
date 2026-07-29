@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Alibi</title>
+<style>
+  /* Deliberately noir: this game commits to a dark look in both themes. */
+  :root {
+    --bg: #16161a; --text: #e8e4d8; --muted: #8f8a7a;
+    --paper: #211f24; --border: #38343c; --amber: #e3a72f;
+    --bad: #d9634f; --good: #7fbf6a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: "Courier New", Courier, monospace;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 580px; padding: 20px 16px; }
+  header { text-align: center; }
+  h1 { font-size: 1.6rem; margin: 4px 0 0; letter-spacing: 0.12em; text-transform: uppercase; }
+  h1 .dot { color: var(--amber); }
+  .subtitle { color: var(--muted); font-size: 0.88rem; margin: 4px 0 14px; }
+  .toolbar { display: flex; justify-content: center; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  select {
+    font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--paper); color: var(--text); cursor: pointer;
+  }
+  .strikes { color: var(--bad); font-weight: 700; min-width: 60px; text-align: center; }
+  .statement {
+    background: var(--paper); border: 1px solid var(--border); border-left: 4px solid var(--amber);
+    border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; line-height: 1.7; font-size: 0.95rem;
+  }
+  .statement .label {
+    display: block; color: var(--amber); font-size: 0.75rem; letter-spacing: 0.18em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .timeline-label, .pool-label { color: var(--muted); font-size: 0.82rem; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 8px; text-align: center; }
+  .timeline { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; min-height: 34px; }
+  .timeline .event {
+    display: flex; align-items: baseline; gap: 10px;
+    background: var(--paper); border: 1px solid var(--amber); border-radius: 8px;
+    padding: 8px 12px; font-size: 0.93rem; animation: slide 0.3s ease;
+  }
+  @keyframes slide { from { transform: translateX(-10px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .timeline .n { color: var(--amber); font-weight: 700; min-width: 1.6em; }
+  .pool { display: flex; flex-direction: column; gap: 6px; }
+  .pool button {
+    text-align: left; font: inherit; font-size: 0.93rem; padding: 9px 12px;
+    background: var(--bg); color: var(--text); border: 1px dashed var(--border);
+    border-radius: 8px; cursor: pointer;
+  }
+  .pool button:hover { border-color: var(--amber); }
+  .pool button.shake { animation: shake 0.35s ease; border-color: var(--bad); }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .endbox { margin-top: 14px; }
+  .endbox .big { text-align: center; font-weight: 700; font-size: 1.05rem; margin-bottom: 10px; color: var(--amber); }
+  .clue-card {
+    background: var(--paper); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 16px; font-size: 0.88rem; line-height: 1.6;
+  }
+  .clue-card h3 { margin: 0 0 8px; font-size: 0.8rem; letter-spacing: 0.15em; text-transform: uppercase; color: var(--amber); }
+  .clue-card li { margin-bottom: 6px; }
+  .clue-card em { color: var(--amber); font-style: normal; }
+  .endbox .buttons { text-align: center; margin-top: 12px; }
+  .endbox button {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--paper); color: var(--text); cursor: pointer; margin: 4px;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 0.75rem; margin: 22px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>The Alibi<span class="dot">.</span></h1>
+    <p class="subtitle">The suspect's story is true — but the tenses hide the real order of events.<br>Tap the events in the order they ACTUALLY happened.</p>
+  </header>
+
+  <div class="toolbar">
+    <select id="case-select" aria-label="Choose case"></select>
+    <span class="strikes" id="strikes"></span>
+  </div>
+
+  <div class="statement" id="statement"></div>
+  <p class="timeline-label">&#128269; Reconstructed timeline</p>
+  <div class="timeline" id="timeline"></div>
+  <p class="pool-label" id="pool-label">What happened first?</p>
+  <div class="pool" id="pool"></div>
+  <div class="endbox" id="endbox"></div>
+
+  <footer>Learning Games — prototype 9 · cases are editable in this file</footer>
+</div>
+
+<script>
+/* ============ CASES — edit or add here ============
+   statement: the suspect's words (shown verbatim)
+   events:    in TRUE chronological order; each has the event text and
+              the tense clue that reveals its position */
+const CASES = [
+  {
+    title: "The Missing Necklace", level: "B1–B2",
+    statement: "“When I arrived at the mansion, the party had already started. After hanging up my coat, I went straight to the library. When the lights went out, the necklace was still in its case. By the time the lights came back on, it had vanished. I will tell the police everything I know tomorrow.”",
+    events: [
+      { t: "The party started", clue: "“had already started” — past perfect: it happened BEFORE the arrival." },
+      { t: "The butler arrived at the mansion", clue: "“When I arrived” — past simple sets the anchor point of the story." },
+      { t: "He hung up his coat", clue: "“After hanging up my coat” — 'after + -ing' puts this before the next action." },
+      { t: "He went to the library", clue: "“I went straight to the library” — past simple, next in the chain." },
+      { t: "The lights went out", clue: "“When the lights went out, the necklace was still…” — so at this moment, no theft yet." },
+      { t: "The necklace vanished", clue: "“By the time the lights came back on, it had vanished” — past perfect: the theft happened before the lights returned." },
+      { t: "The lights came back on", clue: "The reference point that the past perfect “had vanished” points back from." },
+      { t: "He will talk to the police", clue: "“I will tell the police… tomorrow” — future: the only event still to come." }
+    ]
+  },
+  {
+    title: "The Burnt Dinner", level: "A2–B1",
+    statement: "“Before I started cooking, I had watched a video about Italian pasta. While the water was boiling, my phone rang. When I finally returned to the kitchen, the dinner had burnt. I'm going to order a pizza instead.”",
+    events: [
+      { t: "She watched a cooking video", clue: "“I had watched” — past perfect: before the cooking started." },
+      { t: "She started cooking", clue: "“Before I started cooking” — the anchor event in past simple." },
+      { t: "Her phone rang", clue: "“While the water was boiling, my phone rang” — the ring interrupts the boiling." },
+      { t: "The dinner burnt", clue: "“the dinner had burnt” — past perfect: it burnt BEFORE she returned." },
+      { t: "She returned to the kitchen", clue: "“When I finally returned” — past simple: she comes back to find the disaster." },
+      { t: "She will order a pizza", clue: "“I'm going to order” — going to = a plan for the future." }
+    ]
+  }
+];
+/* ============ end of cases ============ */
+
+let c = null, placed = 0, strikes = 0, poolOrder = [];
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function load(i) {
+  c = CASES[i];
+  placed = 0; strikes = 0;
+  poolOrder = shuffle(c.events.map((_, idx) => idx));
+  $("statement").innerHTML = '<span class="label">Suspect statement — case: ' + c.title + ' (' + c.level + ')</span>';
+  $("statement").appendChild(document.createTextNode(c.statement));
+  $("endbox").innerHTML = "";
+  render();
+}
+
+function render() {
+  const tl = $("timeline");
+  tl.innerHTML = "";
+  for (let i = 0; i < placed; i++) {
+    const div = document.createElement("div");
+    div.className = "event";
+    div.innerHTML = '<span class="n">' + (i + 1) + '.</span>';
+    div.appendChild(document.createTextNode(c.events[i].t));
+    tl.appendChild(div);
+  }
+  $("strikes").textContent = strikes ? "✗ " + strikes : "";
+  const pool = $("pool");
+  pool.innerHTML = "";
+  const done = placed >= c.events.length;
+  $("pool-label").style.display = done ? "none" : "";
+  if (done) { finish(); return; }
+  $("pool-label").textContent = placed === 0 ? "What happened first?" : "What happened next?";
+  for (const idx of poolOrder) {
+    if (idx < placed) continue;
+    const btn = document.createElement("button");
+    btn.dataset.idx = idx;
+    btn.textContent = c.events[idx].t;
+    btn.onclick = () => pick(idx, btn);
+    pool.appendChild(btn);
+  }
+}
+
+function pick(idx, btn) {
+  if (idx === placed) { placed++; render(); }
+  else {
+    strikes++;
+    $("strikes").textContent = "✗ " + strikes;
+    btn.classList.add("shake");
+    setTimeout(() => btn.classList.remove("shake"), 380);
+  }
+}
+
+function finish() {
+  const box = $("endbox");
+  box.innerHTML = "";
+  const big = document.createElement("div");
+  big.className = "big";
+  big.textContent = strikes === 0
+    ? "Case closed on the first pass. The tenses told you everything. \u{1F575}\u{FE0F}"
+    : "Case closed with " + strikes + " false lead" + (strikes > 1 ? "s" : "") + ".";
+  box.appendChild(big);
+  const card = document.createElement("div");
+  card.className = "clue-card";
+  card.innerHTML = "<h3>&#128209; The tense clues</h3><ol></ol>";
+  const ol = card.querySelector("ol");
+  for (const e of c.events) {
+    const li = document.createElement("li");
+    li.innerHTML = "<em></em> — ";
+    li.querySelector("em").textContent = e.t;
+    li.appendChild(document.createTextNode(e.clue));
+    ol.appendChild(li);
+  }
+  box.appendChild(card);
+  const buttons = document.createElement("div");
+  buttons.className = "buttons";
+  const share = document.createElement("button");
+  share.textContent = "Copy result";
+  const text = "The Alibi — “" + c.title + "” (" + c.level + "): " + (strikes === 0 ? "solved first pass!" : strikes + " false leads");
+  share.onclick = () => navigator.clipboard.writeText(text).then(() => { share.textContent = "Copied!"; }, () => {});
+  const again = document.createElement("button");
+  again.textContent = "Reopen case";
+  again.onclick = () => load(CASES.indexOf(c));
+  buttons.appendChild(share);
+  buttons.appendChild(again);
+  box.appendChild(buttons);
+}
+
+/* ---- init ---- */
+const sel = $("case-select");
+CASES.forEach((cc, i) => {
+  const o = document.createElement("option");
+  o.value = i;
+  o.textContent = "Case " + (i + 1) + ": " + cc.title + " (" + cc.level + ")";
+  sel.appendChild(o);
+});
+sel.onchange = () => load(Number(sel.value));
+const params = new URLSearchParams(location.search);
+const start = params.has("p") ? Math.min(Math.max(Number(params.get("p")) - 1, 0), CASES.length - 1) : 0;
+load(start);
+sel.value = start;
+</script>
+</body>
+</html>

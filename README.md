@@ -17,6 +17,12 @@ them for English learners.
 | `prototypes/dialogue-detangle/` | **Dialogue Detangle** — reconstruction game: a shuffled conversation in a chat interface; tap the line that comes next (pragmatics/discourse) |
 | `prototypes/emoji-idioms/` | **Emoji Idioms** — riddle game: decode idioms from emoji (🍰👌 = a piece of cake) with a hint ladder and meaning + example each round |
 | `prototypes/lost-in-london/` | **Lost in London** — narrative game: a day in the city where you choose what to say; a rapport meter reacts to your politeness, and you leave with a phrasebook |
+| `prototypes/word-forge/` | **Word Forge** — crafting game: forge words from prefixes, roots and suffixes on a blacksmith's anvil (morphology) |
+| `prototypes/the-alibi/` | **The Alibi** — noir deduction game: the suspect's tenses hide the true order of events; reconstruct the chronology (tense comprehension) |
+| `prototypes/word-bridges/` | **Word Bridges** — chain puzzle: fill the missing words where every neighbouring pair forms a compound (FIRE→work→shop→KEEPER) |
+| `prototypes/the-bouncer/` | **The Bouncer** — judgment game: run a nightclub door for words; admit real spellings, reject fakes like "recieve" (spelling) |
+| `prototypes/word-thermometer/` | **Word Thermometer** — continuum game: order gradable words by intensity (cool→warm→hot→boiling) and learn extreme adjectives |
+| `prototypes/red-pen/` | **Red Pen** — editing game: click the one wrong word in each sentence, or approve it if it's clean (proofreading) |
 
 All prototypes are single self-contained `index.html` files — open in any browser, no build step, content editable at the top of each file.
 

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Forge</title>
+<style>
+  :root {
+    --bg: #f3efe9; --text: #26211b; --muted: #82796c;
+    --card: #ffffff; --border: #ddd4c6; --ember: #d64f1e;
+    --iron: #3c3833; --iron-text: #f3efe9; --good: #2c7a45;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #191612; --text: #ece5da; --muted: #9c9284;
+      --card: #241f19; --border: #3d362c; --ember: #f0703a;
+      --iron: #d8d1c5; --iron-text: #191612; --good: #55b374;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f3efe9; --text: #26211b; --muted: #82796c;
+    --card: #ffffff; --border: #ddd4c6; --ember: #d64f1e;
+    --iron: #3c3833; --iron-text: #f3efe9; --good: #2c7a45;
+  }
+  :root[data-theme="dark"] {
+    --bg: #191612; --text: #ece5da; --muted: #9c9284;
+    --card: #241f19; --border: #3d362c; --ember: #f0703a;
+    --iron: #d8d1c5; --iron-text: #191612; --good: #55b374;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 540px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .hud { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .hud .flames { color: var(--ember); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 18px; margin-bottom: 12px; }
+  .order-def { font-size: 1.1rem; line-height: 1.45; margin-bottom: 4px; }
+  .order-def strong { color: var(--ember); }
+  .order-tag { color: var(--muted); font-size: 0.85rem; font-style: italic; margin-bottom: 14px; }
+  .anvil {
+    min-height: 62px; border: 2px dashed var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 8px; margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .anvil.hot { border-color: var(--ember); }
+  .anvil .placeholder { color: var(--muted); font-style: italic; font-size: 0.9rem; }
+  .part {
+    font-weight: 800; font-size: 1.05rem; letter-spacing: 0.02em;
+    padding: 10px 14px; border-radius: 10px; border: none; cursor: pointer; font-family: inherit;
+  }
+  .anvil .part { background: var(--iron); color: var(--iron-text); }
+  .pool { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 14px; }
+  .pool .part { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+  .pool .part:hover { border-color: var(--ember); }
+  .pool .part.used { visibility: hidden; }
+  .forge-btn {
+    font: inherit; font-weight: 800; font-size: 1.05rem; padding: 13px 34px;
+    border-radius: 999px; border: none; background: var(--ember); color: #fff; cursor: pointer;
+  }
+  .forge-btn:disabled { opacity: 0.4; cursor: default; }
+  .feedback { min-height: 1.5em; font-weight: 800; margin-top: 10px; }
+  .feedback.good { color: var(--good); }
+  .feedback.miss { color: var(--ember); }
+  .shake { animation: shake 0.35s ease; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .made-card {
+    background: var(--card); border: 1px solid var(--good); border-radius: 12px;
+    padding: 14px 16px; text-align: left; margin-bottom: 12px;
+  }
+  .made-card .word { font-size: 1.3rem; font-weight: 800; letter-spacing: 0.03em; }
+  .made-card .word .glow { color: var(--ember); }
+  .made-card .example { color: var(--muted); font-style: italic; margin-top: 4px; }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 12px 30px;
+    border-radius: 999px; border: none; background: var(--iron); color: var(--iron-text); cursor: pointer;
+  }
+  .endbox h2 { margin: 4px 0; }
+  .endbox .score { font-size: 2rem; font-weight: 800; color: var(--ember); }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>&#128296; Word Forge</h1>
+  <p class="subtitle">A customer wants a word. Hammer the right parts together and forge it.</p>
+
+  <div class="hud">
+    <span id="progress">1/10</span>
+    <span class="flames" id="score">&#128293; 0 first-strike forges</span>
+  </div>
+
+  <div class="card" id="play-card">
+    <div class="order-def" id="order-def"></div>
+    <div class="order-tag" id="order-tag"></div>
+    <div class="anvil" id="anvil"><span class="placeholder">tap parts below to place them on the anvil</span></div>
+    <div class="pool" id="pool"></div>
+    <button class="forge-btn" id="forge-btn" disabled>Forge it!</button>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="made-card hidden" id="made-card">
+    <div class="word" id="made-word"></div>
+    <div class="example" id="made-example"></div>
+    <p style="text-align:center;margin:12px 0 0"><button class="primary" id="next-btn">Next order</button></p>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 8 · word orders are editable in this file</footer>
+</div>
+
+<script>
+/* ============ ORDERS — edit or add here ============
+   def:     the customer's request (definition)
+   parts:   the correct pieces IN ORDER (they simply join together)
+   example: sentence shown after forging */
+const ORDERS = [
+  { def: "something that is <strong>not able to be broken</strong>", parts: ["un", "break", "able"],
+    example: "These new phone screens are unbreakable." },
+  { def: "to <strong>use something again</strong>", parts: ["re", "use"],
+    example: "Please reuse your shopping bags." },
+  { def: "<strong>full of hope</strong>", parts: ["hope", "ful"],
+    example: "She felt hopeful about the interview." },
+  { def: "<strong>without a home</strong>", parts: ["home", "less"],
+    example: "The charity helps homeless people find shelter." },
+  { def: "to <strong>spell a word wrongly</strong>", parts: ["mis", "spell"],
+    example: "I always misspell the word 'necessary'." },
+  { def: "<strong>a person who teaches</strong>", parts: ["teach", "er"],
+    example: "Our teacher never forgets homework. Never." },
+  { def: "<strong>the quality of being kind</strong>", parts: ["kind", "ness"],
+    example: "Thank you for your kindness yesterday." },
+  { def: "to <strong>cook something too long</strong>", parts: ["over", "cook"],
+    example: "Don't overcook the pasta — eight minutes, no more!" },
+  { def: "to <strong>not agree</strong>", parts: ["dis", "agree"],
+    example: "I'm afraid I disagree with that idea." },
+  { def: "<strong>in a careful way</strong>", parts: ["care", "ful", "ly"],
+    example: "Carry the glasses carefully, please." }
+];
+const DISTRACTORS = ["un", "re", "dis", "mis", "over", "pre", "able", "ful", "less", "er", "ness", "ly", "ment", "ish", "anti"];
+/* ============ end of orders ============ */
+
+let order = [], current = 0, firstStrike = 0, attempted = false, placed = [];
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle(ORDERS);
+  current = 0; firstStrike = 0;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("play-card").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  showRound();
+}
+
+function poolFor(o) {
+  const extras = shuffle(DISTRACTORS.filter(d => !o.parts.includes(d))).slice(0, 4);
+  return shuffle(o.parts.concat(extras));
+}
+
+function showRound() {
+  const o = order[current];
+  attempted = false; placed = [];
+  $("progress").textContent = (current + 1) + "/" + order.length;
+  $("score").innerHTML = "&#128293; " + firstStrike + " first-strike forges";
+  $("order-def").innerHTML = "The customer wants: " + o.def;
+  $("order-tag").textContent = o.parts.length + " parts needed";
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  $("made-card").classList.add("hidden");
+  $("play-card").classList.remove("hidden");
+  const pool = $("pool");
+  pool.innerHTML = "";
+  for (const p of poolFor(o)) {
+    const btn = document.createElement("button");
+    btn.className = "part";
+    btn.textContent = p;
+    btn.onclick = () => { if (!btn.classList.contains("used")) { btn.classList.add("used"); placed.push({ text: p, poolBtn: btn }); renderAnvil(); } };
+    pool.appendChild(btn);
+  }
+  renderAnvil();
+}
+
+function renderAnvil() {
+  const anvil = $("anvil");
+  anvil.innerHTML = "";
+  if (!placed.length) {
+    anvil.innerHTML = '<span class="placeholder">tap parts below to place them on the anvil</span>';
+  } else {
+    for (let i = 0; i < placed.length; i++) {
+      const item = placed[i];
+      const btn = document.createElement("button");
+      btn.className = "part";
+      btn.textContent = item.text;
+      btn.title = "Tap to remove";
+      btn.onclick = () => { item.poolBtn.classList.remove("used"); placed.splice(i, 1); renderAnvil(); };
+      anvil.appendChild(btn);
+    }
+  }
+  anvil.classList.toggle("hot", placed.length > 0);
+  $("forge-btn").disabled = placed.length === 0;
+}
+
+function forge() {
+  const o = order[current];
+  const guess = placed.map(p => p.text);
+  const right = guess.length === o.parts.length && guess.every((g, i) => g === o.parts[i]);
+  if (right) {
+    if (!attempted) firstStrike++;
+    const word = o.parts.join("");
+    $("made-word").innerHTML = "&#9876;&#65039; <span class='glow'></span>";
+    $("made-word").querySelector(".glow").textContent = word;
+    $("made-example").textContent = "“" + o.example + "”";
+    $("next-btn").textContent = current + 1 >= order.length ? "Close the forge" : "Next order";
+    $("play-card").classList.add("hidden");
+    $("made-card").classList.remove("hidden");
+    $("score").innerHTML = "&#128293; " + firstStrike + " first-strike forges";
+  } else {
+    attempted = true;
+    $("anvil").classList.add("shake");
+    setTimeout(() => $("anvil").classList.remove("shake"), 380);
+    const fb = $("feedback");
+    fb.className = "feedback miss";
+    fb.textContent = guess.length !== o.parts.length
+      ? "The customer asked for " + o.parts.length + " parts…"
+      : "Right parts count, wrong metal or wrong order. Try again!";
+  }
+}
+
+function next() {
+  current++;
+  if (current >= order.length) { endGame(); return; }
+  showRound();
+}
+
+function endGame() {
+  $("play-card").classList.add("hidden");
+  $("made-card").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  let rating;
+  if (firstStrike === order.length) rating = "Master smith — every word forged in one strike!";
+  else if (firstStrike >= 7) rating = "Skilled smith — the guild is impressed.";
+  else if (firstStrike >= 4) rating = "Apprentice smith — the sparks are flying.";
+  else rating = "The forge is hot and so is your learning curve. Again!";
+  box.innerHTML = "<h2>The forge closes</h2>" +
+    "<p class='score'>" + firstStrike + "/" + order.length + "</p>" +
+    "<p>words forged on the first strike</p><p></p>" +
+    "<p><button class='primary' id='again-btn'>Reopen the forge</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--card);color:var(--text);border:1px solid var(--border)'>Copy result</button></p>";
+  box.querySelectorAll("p")[2].textContent = rating;
+  $("again-btn").onclick = startGame;
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Word Forge — " + firstStrike + "/" + order.length + " first-strike forges").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+$("forge-btn").onclick = forge;
+$("next-btn").onclick = next;
+startGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Bouncer</title>
+<style>
+  /* Deliberately nocturnal: a nightclub commits to the dark. */
+  :root {
+    --bg: #14101d; --text: #f0eaf7; --muted: #9a8fb0;
+    --card: #1e1830; --border: #372c50; --neon: #ff4fa3;
+    --neon2: #4fd8ff; --good: #6fe09a; --bad: #ff7a6e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 500px; padding: 20px 16px; text-align: center; }
+  h1 {
+    font-size: 1.7rem; margin: 6px 0 2px; letter-spacing: 0.06em;
+    color: var(--neon); text-shadow: 0 0 14px color-mix(in srgb, var(--neon) 60%, transparent);
+  }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .hud { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .hud .streak { color: var(--neon2); }
+  .rope { height: 4px; border-radius: 2px; background: linear-gradient(90deg, var(--neon), var(--neon2)); margin-bottom: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 26px 18px 20px; margin-bottom: 12px;
+  }
+  .queue-label { color: var(--muted); font-size: 0.85rem; margin-bottom: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .the-word {
+    font-size: 2.1rem; font-weight: 800; letter-spacing: 0.05em; margin-bottom: 18px;
+    text-shadow: 0 0 20px color-mix(in srgb, var(--neon2) 35%, transparent);
+    overflow-wrap: anywhere;
+  }
+  .doors { display: flex; gap: 12px; }
+  .doors button {
+    flex: 1; font: inherit; font-weight: 800; font-size: 1.02rem; padding: 16px 8px;
+    border-radius: 12px; cursor: pointer; border: 2px solid transparent;
+  }
+  #in-btn { background: color-mix(in srgb, var(--good) 22%, var(--card)); color: var(--good); border-color: var(--good); }
+  #out-btn { background: color-mix(in srgb, var(--bad) 22%, var(--card)); color: var(--bad); border-color: var(--bad); }
+  .doors button:disabled { opacity: 0.4; cursor: default; }
+  .verdict { min-height: 3.2em; margin-top: 12px; font-size: 0.95rem; line-height: 1.45; }
+  .verdict .yes { color: var(--good); font-weight: 800; }
+  .verdict .no { color: var(--bad); font-weight: 800; }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 13px 32px;
+    border-radius: 999px; border: none; cursor: pointer;
+    background: linear-gradient(90deg, var(--neon), var(--neon2)); color: #14101d;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 8px; }
+  td { padding: 5px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  td.fake { color: var(--bad); text-decoration: line-through; }
+  td.real { color: var(--good); font-weight: 700; }
+  .endbox h2 { margin: 4px 0; }
+  .endbox .score { font-size: 2rem; font-weight: 800; color: var(--neon2); }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>THE BOUNCER</h1>
+  <p class="subtitle">Club WORD, Friday night. Real spellings get in. Fakes go home.</p>
+
+  <div class="hud">
+    <span id="progress">1/20</span>
+    <span class="streak" id="streak"></span>
+    <span id="score">Score 0</span>
+  </div>
+  <div class="rope"></div>
+
+  <div class="card" id="play-card">
+    <div class="queue-label">Next in the queue&hellip;</div>
+    <div class="the-word" id="the-word"></div>
+    <div class="doors">
+      <button id="in-btn">&#128077; You're on the list</button>
+      <button id="out-btn">&#128581; Not tonight</button>
+    </div>
+    <div class="verdict" id="verdict"></div>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 11 · the guest list is editable in this file</footer>
+</div>
+
+<script>
+/* ============ THE QUEUE — edit or add here ============
+   real: true = correctly spelled English word
+   fix:  for fakes, the real spelling
+   line: the bouncer's comment (shown after judging) */
+const QUEUE = [
+  { w: "yacht", real: true, line: "Rich, silent letters, always on the list." },
+  { w: "yatch", real: false, fix: "yacht", line: "Nice try. The real VIP spells it Y-A-C-H-T." },
+  { w: "rhythm", real: true, line: "No true vowels, all attitude. In you go." },
+  { w: "rythm", real: false, fix: "rhythm", line: "Lost an H at the door. RHYTHM has two." },
+  { w: "weird", real: true, line: "Breaks the 'i before e' rule and gets in anyway. That's weird for you." },
+  { w: "wierd", real: false, fix: "weird", line: "Classic fake ID. WEIRD is e-i — it's a rule-breaker." },
+  { w: "tomorrow", real: true, line: "One M, double R. Come in, see you again tomorrow." },
+  { w: "tommorow", real: false, fix: "tomorrow", line: "Too many Ms, not enough Rs. Try again tomorrow — spelled properly." },
+  { w: "definitely", real: true, line: "Definitely on the list." },
+  { w: "definately", real: false, fix: "definitely", line: "There's no A in the middle. It's definite + ly. Definitely." },
+  { w: "receive", real: true, line: "I before E… except after C. This one knows the exception." },
+  { w: "recieve", real: false, fix: "receive", line: "After C it's E-I. RECEIVE. Security!" },
+  { w: "awkward", real: true, line: "Two Ws, zero grace. Somehow always gets in." },
+  { w: "beleive", real: false, fix: "believe", line: "BELIEVE follows i-before-e. I don't believe this ID for a second." },
+  { w: "island", real: true, line: "The S is silent, the entry is smooth." },
+  { w: "freind", real: false, fix: "friend", line: "A FRIEND to the end — E before N-D. This one's an impostor." },
+  { w: "necessary", real: true, line: "One collar, two sleeves: one C, two Ss. In." },
+  { w: "goverment", real: false, fix: "government", line: "Dropped its N at the door. GOVERN + MENT." },
+  { w: "Wednesday", real: true, line: "Hides a D like it hides its plans. On the list." },
+  { w: "thrimble", real: false, fix: "(not a word)", line: "Sounds English. Isn't. That's the most dangerous kind." }
+];
+/* ============ end of the queue ============ */
+
+let order = [], current = 0, score = 0, streak = 0, bestStreak = 0, locked = false;
+const misjudged = [];
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startNight() {
+  order = shuffle(QUEUE);
+  current = 0; score = 0; streak = 0; bestStreak = 0; misjudged.length = 0;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("play-card").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  document.querySelector(".rope").classList.remove("hidden");
+  showWord();
+}
+
+function showWord() {
+  locked = false;
+  $("progress").textContent = (current + 1) + "/" + order.length;
+  $("score").textContent = "Score " + score;
+  $("streak").textContent = streak >= 2 ? "⚡ streak " + streak : "";
+  $("the-word").textContent = order[current].w;
+  $("verdict").innerHTML = "";
+  $("in-btn").disabled = false;
+  $("out-btn").disabled = false;
+}
+
+function judge(saidReal) {
+  if (locked) return;
+  locked = true;
+  $("in-btn").disabled = true;
+  $("out-btn").disabled = true;
+  const item = order[current];
+  const right = saidReal === item.real;
+  const v = $("verdict");
+  if (right) {
+    score += 10 + Math.min(streak, 5) * 2;
+    streak++; bestStreak = Math.max(bestStreak, streak);
+    v.innerHTML = "<span class='yes'>Good call.</span> ";
+  } else {
+    streak = 0;
+    misjudged.push(item);
+    v.innerHTML = "<span class='no'>" + (item.real ? "You turned away a real word!" : "A fake got past you!") + "</span> ";
+  }
+  v.appendChild(document.createTextNode(item.line));
+  $("score").textContent = "Score " + score;
+  current++;
+  setTimeout(current < order.length ? showWord : endNight, right ? 1300 : 2400);
+}
+
+function endNight() {
+  $("play-card").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  document.querySelector(".rope").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  const right = order.length - misjudged.length;
+  let rating;
+  if (right === order.length) rating = "Legendary doorman — not one fake got past you.";
+  else if (right >= 16) rating = "Sharp eyes — the club is safe.";
+  else if (right >= 12) rating = "Decent shift — a few fakes slipped through the smoke.";
+  else rating = "Rough night. Study the list below before Saturday.";
+  box.innerHTML = "<h2>Closing time</h2>" +
+    "<p class='score'>" + right + "/" + order.length + "</p>" +
+    "<p></p><p style='color:var(--muted)'>Best streak: " + bestStreak + " · Score: " + score + "</p>" +
+    "<div id='recap'></div>" +
+    "<p style='margin-top:14px'><button class='primary' id='again-btn'>Work another night</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--card);color:var(--text);border:1px solid var(--border)'>Copy result</button></p>";
+  box.querySelectorAll("p")[1].textContent = rating;
+  const fakes = QUEUE.filter(q => !q.real);
+  const recap = box.querySelector("#recap");
+  const table = document.createElement("table");
+  table.innerHTML = "<tr><td style='color:var(--muted)'>Fake</td><td style='color:var(--muted)'>Real spelling</td></tr>";
+  for (const f of fakes) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td class='fake'></td><td class='real'></td>";
+    tr.children[0].textContent = f.w;
+    tr.children[1].textContent = f.fix;
+    table.appendChild(tr);
+  }
+  recap.appendChild(table);
+  $("again-btn").onclick = startNight;
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("The Bouncer — " + right + "/" + order.length + " correct calls (best streak " + bestStreak + ")").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+$("in-btn").onclick = () => judge(true);
+$("out-btn").onclick = () => judge(false);
+startNight();
+</script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Thermometer</title>
+<style>
+  :root {
+    --bg: #f7f8f9; --text: #1d2126; --muted: #71797f;
+    --card: #ffffff; --border: #dde2e6; --cool: #3a7bd5; --hotc: #d5473a;
+    --good: #22894f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14171a; --text: #e9edf0; --muted: #8b959c;
+      --card: #1d2226; --border: #323a40; --cool: #6ea3ec; --hotc: #ee7466;
+      --good: #4dbd7d;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f8f9; --text: #1d2126; --muted: #71797f;
+    --card: #ffffff; --border: #dde2e6; --cool: #3a7bd5; --hotc: #d5473a;
+    --good: #22894f;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14171a; --text: #e9edf0; --muted: #8b959c;
+    --card: #1d2226; --border: #323a40; --cool: #6ea3ec; --hotc: #ee7466;
+    --good: #4dbd7d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 520px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .hud { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 12px; font-variant-numeric: tabular-nums; }
+  .hud .strikes { color: var(--hotc); }
+  .set-label { font-weight: 800; font-size: 1.05rem; margin-bottom: 12px; }
+  .layout { display: flex; gap: 16px; align-items: stretch; margin-bottom: 12px; }
+  .thermo {
+    width: 46px; border-radius: 23px; background: var(--card); border: 1px solid var(--border);
+    position: relative; overflow: hidden; min-height: 260px;
+  }
+  .thermo .mercury {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 0%;
+    background: linear-gradient(to top, var(--cool), var(--hotc));
+    transition: height 0.4s ease;
+  }
+  .scale {
+    flex: 1; display: flex; flex-direction: column-reverse; justify-content: flex-start; gap: 8px;
+  }
+  .scale .placed {
+    background: var(--card); border: 1px solid var(--good); border-radius: 10px;
+    padding: 10px 12px; font-weight: 800; animation: pop 0.3s ease;
+  }
+  @keyframes pop { from { transform: scale(0.9); opacity: 0.4; } to { transform: none; opacity: 1; } }
+  .scale .slot-hint { color: var(--muted); font-size: 0.85rem; font-style: italic; padding: 8px; }
+  .ends { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); margin: 4px 2px 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .pool { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 8px; }
+  .pool button {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 11px 18px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--card);
+    color: var(--text); cursor: pointer;
+  }
+  .pool button:hover { border-color: var(--cool); }
+  .pool button.shake { animation: shake 0.35s ease; border-color: var(--hotc); }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .prompt { color: var(--muted); font-size: 0.9rem; margin-bottom: 10px; font-style: italic; }
+  .note-card {
+    background: var(--card); border: 1px solid var(--good); border-radius: 12px;
+    padding: 12px 16px; text-align: left; font-size: 0.93rem; line-height: 1.5; margin-bottom: 10px;
+  }
+  .note-card strong { color: var(--good); }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 12px 30px;
+    border-radius: 999px; border: none; background: var(--cool); color: #fff; cursor: pointer;
+  }
+  .endbox h2 { margin: 4px 0; }
+  .endbox .score { font-size: 2rem; font-weight: 800; color: var(--hotc); }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>&#127777;&#65039; Word Thermometer</h1>
+  <p class="subtitle">English words come in degrees. Load them into the thermometer, weakest first.</p>
+
+  <div class="hud">
+    <span id="progress">1/6</span>
+    <span class="strikes" id="strikes"></span>
+  </div>
+
+  <div id="game">
+    <div class="set-label" id="set-label"></div>
+    <div class="layout">
+      <div class="thermo"><div class="mercury" id="mercury"></div></div>
+      <div class="scale" id="scale"><div class="slot-hint">tap the weakest word first…</div></div>
+    </div>
+    <div class="ends"><span>&#10052;&#65039; weakest</span><span>&#128293; strongest</span></div>
+    <p class="prompt" id="prompt">Which of these is the WEAKEST?</p>
+    <div class="pool" id="pool"></div>
+    <div id="note-slot"></div>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 12 · scales are editable in this file</footer>
+</div>
+
+<script>
+/* ============ SCALES — edit or add here ============
+   words: from WEAKEST to STRONGEST
+   note:  the mini-lesson shown after the round */
+const SCALES = [
+  { label: "How cold or hot?", words: ["freezing", "cold", "cool", "warm", "hot", "boiling"],
+    firstPrompt: "Which of these is the COLDEST?", nextPrompt: "And the next degree warmer?",
+    note: "Freezing and boiling are EXTREME adjectives — they take “absolutely”, not “very”: absolutely boiling ✓, very boiling ✗." },
+  { label: "How loud is the voice?", words: ["whisper", "talk", "shout", "scream"],
+    note: "These are all verbs you can grade: whisper it, say it, shout it, scream it. “Don't shout at me!” is angrier than “Don't talk to me!”" },
+  { label: "How fast on foot?", words: ["stroll", "walk", "jog", "run", "sprint"],
+    note: "A stroll is slow and happy; a sprint is short and desperate. “We strolled along the beach” sets a whole mood in one verb." },
+  { label: "How wet?", words: ["dry", "damp", "wet", "soaked"],
+    note: "Damp = slightly wet (often unpleasantly). Soaked is extreme: “I got absolutely soaked in the rain.”" },
+  { label: "How good was the film?", words: ["terrible", "bad", "okay", "good", "fantastic"],
+    note: "Terrible and fantastic are extreme: “absolutely fantastic”, never “very fantastic”. Okay is beautifully lukewarm — “It was… okay” says everything." },
+  { label: "How angry?", words: ["annoyed", "angry", "furious"],
+    note: "Annoyed is small (traffic), angry is real, furious is extreme — “She was absolutely furious.”" }
+];
+/* ============ end of scales ============ */
+
+let order = [], current = 0, placed = 0, strikes = 0, roundStrikes = 0, poolOrder = [];
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle(SCALES);
+  current = 0; strikes = 0;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("game").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  showRound();
+}
+
+function showRound() {
+  const s = order[current];
+  placed = 0; roundStrikes = 0;
+  poolOrder = shuffle(s.words.map((_, i) => i));
+  $("progress").textContent = (current + 1) + "/" + order.length;
+  $("set-label").textContent = s.label;
+  $("note-slot").innerHTML = "";
+  render();
+}
+
+function render() {
+  const s = order[current];
+  $("strikes").textContent = strikes ? "✗ " + strikes : "";
+  $("mercury").style.height = (placed / s.words.length * 100) + "%";
+
+  const scale = $("scale");
+  scale.innerHTML = "";
+  if (!placed) scale.innerHTML = '<div class="slot-hint">tap the weakest word first…</div>';
+  for (let i = 0; i < placed; i++) {
+    const div = document.createElement("div");
+    div.className = "placed";
+    div.textContent = s.words[i];
+    scale.appendChild(div);
+  }
+
+  const done = placed >= s.words.length;
+  $("prompt").style.display = done ? "none" : "";
+  $("prompt").textContent = placed === 0
+    ? (s.firstPrompt || "Which of these is the WEAKEST?")
+    : (s.nextPrompt || "And the next degree up?");
+  const pool = $("pool");
+  pool.innerHTML = "";
+  if (done) { finishRound(); return; }
+  for (const idx of poolOrder) {
+    if (idx < placed) continue;
+    const btn = document.createElement("button");
+    btn.dataset.idx = idx;
+    btn.textContent = s.words[idx];
+    btn.onclick = () => pick(idx, btn);
+    pool.appendChild(btn);
+  }
+}
+
+function pick(idx, btn) {
+  if (idx === placed) { placed++; render(); }
+  else {
+    strikes++; roundStrikes++;
+    $("strikes").textContent = "✗ " + strikes;
+    btn.classList.add("shake");
+    setTimeout(() => btn.classList.remove("shake"), 380);
+  }
+}
+
+function finishRound() {
+  const s = order[current];
+  const slot = $("note-slot");
+  slot.innerHTML = "";
+  const note = document.createElement("div");
+  note.className = "note-card";
+  note.innerHTML = "<strong>" + (roundStrikes === 0 ? "Perfect reading! " : "") + "Degree notes:</strong> ";
+  note.appendChild(document.createTextNode(s.note));
+  slot.appendChild(note);
+  const btn = document.createElement("button");
+  btn.className = "primary";
+  btn.id = "next-btn";
+  btn.textContent = current + 1 >= order.length ? "See results" : "Next scale";
+  btn.onclick = next;
+  slot.appendChild(btn);
+}
+
+function next() {
+  current++;
+  if (current >= order.length) { endGame(); return; }
+  showRound();
+}
+
+function endGame() {
+  $("game").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  let rating;
+  if (strikes === 0) rating = "Calibrated like a laboratory instrument. Flawless.";
+  else if (strikes <= 3) rating = "Fine measurements — barely a wobble in the mercury.";
+  else if (strikes <= 8) rating = "Decent readings. Replay to steady the needle.";
+  else rating = "The thermometer survived. Your feel for word-degrees is warming up.";
+  box.innerHTML = "<h2>All scales read</h2>" +
+    "<p class='score'>" + strikes + " misread" + (strikes === 1 ? "" : "s") + "</p>" +
+    "<p></p>" +
+    "<p><button class='primary' id='again-btn'>Measure again</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--card);color:var(--text);border:1px solid var(--border)'>Copy result</button></p>";
+  box.querySelectorAll("p")[1].textContent = rating;
+  $("again-btn").onclick = startGame;
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Word Thermometer — finished all 6 scales with " + strikes + " misreads").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+startGame();
+</script>
+</body>
+</html>
