@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lost in London</title>
+<style>
+  :root {
+    --bg: #f4f2ed; --text: #26221e; --muted: #7d766c;
+    --card: #ffffff; --border: #ddd7cc; --bus: #c22b2e;
+    --good: #2c7a45; --mid: #b0820f; --bad: #b8433b;
+    --meter-bg: #e4dfd4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #191713; --text: #ece8e1; --muted: #99917f;
+      --card: #232019; --border: #3d382d; --bus: #e05356;
+      --good: #55b374; --mid: #d9ab3e; --bad: #ea7a72;
+      --meter-bg: #33302a;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f2ed; --text: #26221e; --muted: #7d766c;
+    --card: #ffffff; --border: #ddd7cc; --bus: #c22b2e;
+    --good: #2c7a45; --mid: #b0820f; --bad: #b8433b;
+    --meter-bg: #e4dfd4;
+  }
+  :root[data-theme="dark"] {
+    --bg: #191713; --text: #ece8e1; --muted: #99917f;
+    --card: #232019; --border: #3d382d; --bus: #e05356;
+    --good: #55b374; --mid: #d9ab3e; --bad: #ea7a72;
+    --meter-bg: #33302a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 560px; padding: 20px 16px; }
+  header { text-align: center; }
+  h1 { font-size: 1.7rem; margin: 4px 0 0; }
+  h1 .bus-dot { color: var(--bus); }
+  .subtitle { color: var(--muted); font-style: italic; font-size: 0.95rem; margin: 2px 0 16px; }
+  .meter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .meter-label { font-size: 0.85rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .meter { flex: 1; height: 12px; background: var(--meter-bg); border-radius: 6px; overflow: hidden; }
+  .meter div { height: 100%; background: var(--bus); width: 50%; transition: width 0.5s ease; border-radius: 6px; }
+  .meter-num { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+  .scene {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 20px 20px 16px; margin-bottom: 12px;
+  }
+  .scene-tag {
+    display: inline-block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--bus); border: 1px solid var(--bus);
+    border-radius: 999px; padding: 2px 10px; margin-bottom: 10px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .scene-text { line-height: 1.55; margin-bottom: 6px; }
+  .scene-text .said { font-style: italic; }
+  .prompt-label { color: var(--muted); font-size: 0.9rem; margin: 12px 0 8px; font-style: italic; }
+  .options { display: flex; flex-direction: column; gap: 8px; }
+  .options button {
+    text-align: left; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 0.97rem; line-height: 1.4; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer;
+  }
+  .options button:hover { border-color: var(--bus); }
+  .reaction {
+    border-radius: 10px; padding: 12px 14px; margin-top: 10px; font-size: 0.95rem; line-height: 1.5;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  .reaction.good { background: color-mix(in srgb, var(--good) 14%, var(--card)); border: 1px solid var(--good); }
+  .reaction.mid  { background: color-mix(in srgb, var(--mid) 14%, var(--card)); border: 1px solid var(--mid); }
+  .reaction.bad  { background: color-mix(in srgb, var(--bad) 14%, var(--card)); border: 1px solid var(--bad); }
+  .reaction .delta { font-weight: 800; }
+  .primary {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-weight: 700; font-size: 1rem; padding: 11px 26px; border-radius: 999px;
+    border: none; background: var(--bus); color: #fff; cursor: pointer; margin-top: 12px;
+  }
+  .endbox { text-align: center; }
+  .endbox .rating { font-size: 1.3rem; font-weight: 700; margin: 8px 0; }
+  .phrasebook {
+    text-align: left; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 18px; margin: 14px 0;
+  }
+  .phrasebook h3 { margin: 0 0 8px; font-size: 1rem; }
+  .phrasebook li { margin-bottom: 6px; line-height: 1.4; }
+  .hidden { display: none; }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Lost in London <span class="bus-dot">&#9679;</span></h1>
+    <p class="subtitle">One day in the city. Choose what to say — the locals are listening.</p>
+  </header>
+
+  <div class="meter-row">
+    <span class="meter-label">Rapport</span>
+    <div class="meter"><div id="meter-fill"></div></div>
+    <span class="meter-num" id="meter-num">50</span>
+  </div>
+
+  <div class="scene" id="scene-card">
+    <span class="scene-tag" id="scene-tag"></span>
+    <div class="scene-text" id="scene-text"></div>
+    <div class="prompt-label">What do you say?</div>
+    <div class="options" id="options"></div>
+    <div id="reaction-slot"></div>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 7 · scenes are editable in this file</footer>
+</div>
+
+<script>
+/* ============ SCENES — edit or add here ============
+   Each option: text, delta (rapport change), tone: good|mid|bad, fb (feedback).
+   The "good" option's text is collected into the final phrasebook. */
+const SCENES = [
+  {
+    tag: "Heathrow Airport, 9:05",
+    text: "You've just landed with one suitcase and no idea where to go. A staff member in a hi-vis jacket walks past.",
+    options: [
+      { text: "Excuse me, could you tell me where the trains are?", delta: 10, tone: "good",
+        fb: "“Of course! Down the escalator, follow the signs.” — Indirect questions (“Could you tell me where X is?”) are the politeness gold standard." },
+      { text: "Where is train?", delta: 0, tone: "mid",
+        fb: "She points the way, a little briskly. Understood — but “Where IS THE train?” needs its article, and an “Excuse me” opens every door in Britain." },
+      { text: "Oi! Train! Which way?", delta: -10, tone: "bad",
+        fb: "She raises an eyebrow before answering. “Oi” is for football matches and emergencies — never for strangers you need help from." }
+    ]
+  },
+  {
+    tag: "Ticket office, 9:40",
+    text: "You reach the ticket window. The clerk looks up and says: “Morning. Where to?”",
+    options: [
+      { text: "A return to central London, please.", delta: 10, tone: "good",
+        fb: "“That'll be twenty-two pounds.” — “A return to X, please” is the exact native formula. (One way = “a single”.)" },
+      { text: "I want ticket to London.", delta: 0, tone: "mid",
+        fb: "You get your ticket. “I want” sounds surprisingly blunt in English — “I'd like” or “Could I have” soften it instantly." },
+      { text: "Give me a ticket. Fast, please.", delta: -10, tone: "bad",
+        fb: "The clerk serves you in silence. Commands like “Give me” need heavy softening in English — even with a “please” on the end." }
+    ]
+  },
+  {
+    tag: "A café near the river, 13:00",
+    text: "Lunchtime. The waiter arrives: “What can I get you?” You want the fish and chips and a lemonade.",
+    options: [
+      { text: "Could I have the fish and chips and a lemonade, please?", delta: 10, tone: "good",
+        fb: "“Coming right up!” — “Could I have… please?” is the restaurant workhorse. Smooth as the Thames." },
+      { text: "Fish and chips. Lemonade.", delta: 0, tone: "mid",
+        fb: "He nods and scribbles. Efficient, but telegram-style ordering sounds cold — one “please” fixes everything." },
+      { text: "You have fish? I will eat it now.", delta: -10, tone: "bad",
+        fb: "The waiter blinks. “I will eat it now” sounds like a threat to the fish. Try “Could I have…?”" }
+    ]
+  },
+  {
+    tag: "Somewhere in Soho, 15:30",
+    text: "Your phone is dead and the streets have stopped making sense. A woman with a friendly dog is waiting to cross.",
+    options: [
+      { text: "Sorry to bother you — I'm a bit lost. Do you know the way to Covent Garden?", delta: 10, tone: "good",
+        fb: "“No bother at all! It's five minutes that way.” — “Sorry to bother you” + “a bit lost” is exactly how locals interrupt strangers." },
+      { text: "Covent Garden. You know it?", delta: 0, tone: "mid",
+        fb: "She helps, slightly startled. Opening with the bare place name feels like an interrogation — lead with an apology-opener." },
+      { text: "Hey. Take me to Covent Garden?", delta: -10, tone: "bad",
+        fb: "She laughs nervously and crosses the road. You asked her to personally escort you — “Do you know the way to…?” asks for directions, not a chaperone." }
+    ]
+  },
+  {
+    tag: "The B&B, 18:00",
+    text: "Your host greets you at the door: “You made it! How was your first day, then?”",
+    options: [
+      { text: "Really good, thanks! A bit tiring, but I loved it. How was yours?", delta: 10, tone: "good",
+        fb: "Twenty happy minutes of chat follow. Answer + detail + return question — that's the small-talk triangle, and you nailed it." },
+      { text: "Good.", delta: 0, tone: "mid",
+        fb: "“…Right! Well, dinner's at seven.” One-word answers close conversations. Add one detail and bounce the question back." },
+      { text: "Very bad. London is too expensive and your stairs are many.", delta: -10, tone: "bad",
+        fb: "An arctic silence. Honesty is lovely, but small talk isn't the moment for a full report — save reviews for later, and never count a host's stairs." }
+    ]
+  },
+  {
+    tag: "The pub, 20:30",
+    text: "Someone turns with two full pints and bumps straight into you. Beer everywhere. “Oh no — I'm SO sorry!” he says, horrified.",
+    options: [
+      { text: "No worries at all — honestly, it happens! Can I help?", delta: 10, tone: "good",
+        fb: "“You're a legend — let me get you a drink!” — Waving off an apology graciously (“No worries, honestly!”) is peak British social skill. You've made a friend." },
+      { text: "It is OK.", delta: 0, tone: "mid",
+        fb: "He apologises twice more. Fine, but flat — natives soften with “honestly”, “at all”, “don't worry about it”." },
+      { text: "You must watch where you are going!", delta: -10, tone: "bad",
+        fb: "The whole table goes quiet. He apologised first — in Britain the only move left is forgiving him competitively." }
+    ]
+  }
+];
+/* ============ end of scenes ============ */
+
+let scene = 0, rapport = 50, chosen = false;
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function setMeter() {
+  rapport = Math.max(0, Math.min(100, rapport));
+  $("meter-fill").style.width = rapport + "%";
+  $("meter-num").textContent = rapport;
+}
+
+function showScene() {
+  chosen = false;
+  const s = SCENES[scene];
+  $("scene-tag").textContent = s.tag;
+  $("scene-text").textContent = s.text;
+  $("reaction-slot").innerHTML = "";
+  document.querySelector(".prompt-label").style.display = "";
+  const opts = $("options");
+  opts.innerHTML = "";
+  for (const o of shuffle(s.options)) {
+    const btn = document.createElement("button");
+    btn.textContent = "“" + o.text + "”";
+    btn.onclick = () => choose(o);
+    opts.appendChild(btn);
+  }
+}
+
+function choose(o) {
+  if (chosen) return;
+  chosen = true;
+  rapport += o.delta;
+  setMeter();
+  $("options").innerHTML = "";
+  document.querySelector(".prompt-label").style.display = "none";
+  const r = document.createElement("div");
+  r.className = "reaction " + o.tone;
+  const sign = o.delta > 0 ? "+" : "";
+  r.innerHTML = "<span class='delta'></span> ";
+  r.querySelector(".delta").textContent = sign + o.delta + " rapport.";
+  r.appendChild(document.createTextNode(" " + o.fb));
+  const btn = document.createElement("button");
+  btn.className = "primary";
+  btn.textContent = scene + 1 >= SCENES.length ? "End of the day" : "Continue";
+  btn.onclick = nextScene;
+  const slot = $("reaction-slot");
+  slot.appendChild(r);
+  slot.appendChild(btn);
+}
+
+function nextScene() {
+  scene++;
+  if (scene >= SCENES.length) { endGame(); return; }
+  showScene();
+}
+
+function endGame() {
+  $("scene-card").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  let rating;
+  if (rapport >= 100) rating = "\u{1F3C6} Honorary Londoner — they'll name a bus stop after you.";
+  else if (rapport >= 80) rating = "☕ Charming visitor — invited back for Sunday roast.";
+  else if (rapport >= 50) rating = "\u{1F326}️ Getting there — a few phrases short of fluent charm.";
+  else rating = "\u{1F9CA} The British found you… memorable. Study the phrasebook!";
+  box.innerHTML =
+    "<h2>The day is over</h2>" +
+    "<p style='font-size:2rem;font-weight:700;margin:2px 0'>" + rapport + "/100</p>" +
+    "<p class='rating'></p>" +
+    "<div class='phrasebook'><h3>&#128214; Your phrasebook — the winning lines</h3><ul id='pb-list'></ul></div>" +
+    "<button class='primary' id='again-btn'>Live the day again</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--card);color:var(--text);border:1px solid var(--border)'>Copy result</button>";
+  box.querySelector(".rating").textContent = rating;
+  const ul = box.querySelector("#pb-list");
+  for (const s of SCENES) {
+    const best = s.options.find(o => o.tone === "good");
+    const li = document.createElement("li");
+    li.textContent = "“" + best.text + "”";
+    ul.appendChild(li);
+  }
+  $("again-btn").onclick = () => {
+    scene = 0; rapport = 50; setMeter();
+    box.classList.add("hidden");
+    $("scene-card").classList.remove("hidden");
+    showScene();
+  };
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Lost in London — finished the day with " + rapport + "/100 rapport").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+setMeter();
+showScene();
+</script>
+</body>
+</html>

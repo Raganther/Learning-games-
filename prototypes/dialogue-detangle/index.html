@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dialogue Detangle</title>
+<style>
+  :root {
+    --bg: #e9edf2; --text: #16202b; --muted: #67788c;
+    --chat-bg: #f8fafc; --border: #d3dce6;
+    --bubble-a: #ffffff; --bubble-a-text: #16202b;
+    --bubble-b: #1e7d5a; --bubble-b-text: #ffffff;
+    --pool-bg: #ffffff; --accent: #1e7d5a; --bad: #c2453a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10151b; --text: #e7edf4; --muted: #8b9cb0;
+      --chat-bg: #171e27; --border: #2c3947;
+      --bubble-a: #26313e; --bubble-a-text: #e7edf4;
+      --bubble-b: #2c9c72; --bubble-b-text: #0c1a14;
+      --pool-bg: #1c242e; --accent: #3db98a; --bad: #ef7a70;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #e9edf2; --text: #16202b; --muted: #67788c;
+    --chat-bg: #f8fafc; --border: #d3dce6;
+    --bubble-a: #ffffff; --bubble-a-text: #16202b;
+    --bubble-b: #1e7d5a; --bubble-b-text: #ffffff;
+    --pool-bg: #ffffff; --accent: #1e7d5a; --bad: #c2453a;
+  }
+  :root[data-theme="dark"] {
+    --bg: #10151b; --text: #e7edf4; --muted: #8b9cb0;
+    --chat-bg: #171e27; --border: #2c3947;
+    --bubble-a: #26313e; --bubble-a-text: #e7edf4;
+    --bubble-b: #2c9c72; --bubble-b-text: #0c1a14;
+    --pool-bg: #1c242e; --accent: #3db98a; --bad: #ef7a70;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 560px; padding: 18px 14px; }
+  header { text-align: center; }
+  h1 { font-size: 1.5rem; margin: 4px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 12px; }
+  .toolbar { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+  select {
+    font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--pool-bg); color: var(--text); cursor: pointer;
+  }
+  .strikes { font-weight: 700; color: var(--bad); font-size: 0.9rem; min-width: 70px; text-align: center; }
+  .chat {
+    background: var(--chat-bg); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px;
+  }
+  .bubble {
+    max-width: 82%; padding: 9px 13px; border-radius: 16px; line-height: 1.35; font-size: 0.97rem;
+    animation: drop 0.3s ease;
+  }
+  @keyframes drop { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .bubble.sa { align-self: flex-start; background: var(--bubble-a); color: var(--bubble-a-text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .bubble.sb { align-self: flex-end; background: var(--bubble-b); color: var(--bubble-b-text); border-bottom-right-radius: 4px; }
+  .speaker-tag { display: block; font-size: 0.7rem; opacity: 0.7; font-weight: 700; margin-bottom: 2px; letter-spacing: 0.04em; }
+  .pool-label { text-align: center; color: var(--muted); font-size: 0.85rem; margin: 0 0 8px; }
+  .pool { display: flex; flex-direction: column; gap: 8px; }
+  .pool button {
+    text-align: left; font: inherit; font-size: 0.95rem; line-height: 1.35;
+    background: var(--pool-bg); color: var(--text);
+    border: 1px dashed var(--border); border-radius: 12px; padding: 9px 13px; cursor: pointer;
+  }
+  .pool button:hover { border-color: var(--accent); }
+  .pool button.shake { animation: shake 0.35s ease; border-color: var(--bad); }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .endbox { text-align: center; margin-top: 12px; }
+  .endbox .big { font-size: 1.1rem; font-weight: 800; margin-bottom: 8px; }
+  .note-card {
+    background: var(--pool-bg); border: 1px solid var(--accent); border-radius: 12px;
+    padding: 12px 16px; margin: 10px 0; text-align: left; font-size: 0.95rem;
+  }
+  .note-card strong { color: var(--accent); }
+  .endbox button {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--pool-bg); color: var(--text); cursor: pointer; margin: 4px;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Dialogue Detangle</h1>
+    <p class="subtitle">The conversation got shuffled. Tap the line that comes next.</p>
+  </header>
+
+  <div class="toolbar">
+    <select id="dialogue-select" aria-label="Choose dialogue"></select>
+    <span class="strikes" id="strikes"></span>
+  </div>
+
+  <div class="chat" id="chat"></div>
+  <p class="pool-label" id="pool-label">Which line comes next?</p>
+  <div class="pool" id="pool"></div>
+  <div class="endbox" id="endbox"></div>
+
+  <footer>Learning Games — prototype 5 · dialogues are editable in this file</footer>
+</div>
+
+<script>
+/* ============ DIALOGUES — edit or add here ============
+   speakers: [name of left speaker, name of right speaker]
+   lines: in the CORRECT order; s: 0 = left speaker, 1 = right
+   note: the mini-lesson shown after solving */
+const DIALOGUES = [
+  {
+    title: "At the café", level: "A2",
+    speakers: ["Barista", "Customer"],
+    lines: [
+      { s: 0, t: "Good morning! What can I get you?" },
+      { s: 1, t: "Hi! A large coffee with milk, please." },
+      { s: 0, t: "Sure. Anything to eat?" },
+      { s: 1, t: "Yes, one of those chocolate muffins." },
+      { s: 0, t: "Great. Eat in or take away?" },
+      { s: 1, t: "Take away, please. How much is that?" },
+      { s: 0, t: "That's four fifty, please." },
+      { s: 1, t: "Here you are. Thanks a lot!" }
+    ],
+    note: "Service conversations follow a fixed dance: greeting → order → extra offer (“Anything to eat?”) → payment. “Here you are” is what you say when you hand something over."
+  },
+  {
+    title: "Phoning the dentist", level: "B1",
+    speakers: ["Receptionist", "Patient"],
+    lines: [
+      { s: 0, t: "Good afternoon, Park Street Dental. How can I help you?" },
+      { s: 1, t: "Hello. I'd like to make an appointment with Dr. Lee, please." },
+      { s: 0, t: "Of course. Is it for a check-up, or something urgent?" },
+      { s: 1, t: "Just a check-up, but one tooth hurts a little." },
+      { s: 0, t: "I see. We have a free slot on Thursday at three. Does that work?" },
+      { s: 1, t: "Could we make it a bit later? I finish work at four." },
+      { s: 0, t: "No problem — Thursday at half past four, then?" },
+      { s: 1, t: "Perfect. Thank you very much. See you Thursday!" }
+    ],
+    note: "Notice the polite request forms: “I'd like to…”, “Could we make it…?”. On the phone, softeners like these do the work that a smile does face to face."
+  },
+  {
+    title: "Returning faulty headphones", level: "B2",
+    speakers: ["Customer", "Assistant"],
+    lines: [
+      { s: 0, t: "Excuse me — I bought these headphones here last week, and they've stopped working." },
+      { s: 1, t: "I'm sorry to hear that. Do you have the receipt with you?" },
+      { s: 0, t: "Yes, here it is. I've only used them a few times." },
+      { s: 1, t: "Thank you. It does look like a fault. We can offer a repair or an exchange." },
+      { s: 0, t: "To be honest, I'd rather have a refund, if that's possible." },
+      { s: 1, t: "Normally we only exchange, but as they're faulty, a refund is fine." },
+      { s: 0, t: "I appreciate that. Thanks for being so helpful." },
+      { s: 1, t: "You're welcome. I'll process that for you now." }
+    ],
+    note: "A good complaint stays soft but firm: open with “Excuse me…”, state facts (present perfect: “they've stopped working”), and push politely with “To be honest, I'd rather…”."
+  }
+];
+/* ============ end of dialogues ============ */
+
+let d = null, placed = 0, strikes = 0, poolOrder = [];
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function load(i) {
+  d = DIALOGUES[i];
+  placed = 1;                       // first line is given
+  strikes = 0;
+  poolOrder = shuffle(d.lines.map((_, idx) => idx).slice(1));
+  $("endbox").innerHTML = "";
+  render();
+}
+
+function render() {
+  const chat = $("chat");
+  chat.innerHTML = "";
+  for (let i = 0; i < placed; i++) {
+    const line = d.lines[i];
+    const b = document.createElement("div");
+    b.className = "bubble " + (line.s === 0 ? "sa" : "sb");
+    const tag = document.createElement("span");
+    tag.className = "speaker-tag";
+    tag.textContent = d.speakers[line.s];
+    b.appendChild(tag);
+    b.appendChild(document.createTextNode(line.t));
+    chat.appendChild(b);
+  }
+
+  $("strikes").textContent = strikes ? "✗ " + strikes : "";
+  const pool = $("pool");
+  pool.innerHTML = "";
+  const done = placed >= d.lines.length;
+  $("pool-label").style.display = done ? "none" : "";
+  if (done) { finish(); return; }
+  for (const idx of poolOrder) {
+    if (idx < placed) continue;
+    const line = d.lines[idx];
+    const btn = document.createElement("button");
+    btn.dataset.idx = idx;
+    btn.textContent = d.speakers[line.s] + ": " + line.t;
+    btn.onclick = () => pick(idx, btn);
+    pool.appendChild(btn);
+  }
+}
+
+function pick(idx, btn) {
+  if (idx === placed) {
+    placed++;
+    render();
+  } else {
+    strikes++;
+    $("strikes").textContent = "✗ " + strikes;
+    btn.classList.add("shake");
+    setTimeout(() => btn.classList.remove("shake"), 380);
+  }
+}
+
+function finish() {
+  const box = $("endbox");
+  box.innerHTML = "";
+  const big = document.createElement("div");
+  big.className = "big";
+  big.textContent = strikes === 0
+    ? "Untangled perfectly — not a single wrong tap! \u{1F389}"
+    : "Untangled with " + strikes + " wrong tap" + (strikes > 1 ? "s" : "") + "!";
+  box.appendChild(big);
+  const note = document.createElement("div");
+  note.className = "note-card";
+  note.innerHTML = "<strong>Why it flows:</strong> ";
+  note.appendChild(document.createTextNode(d.note));
+  box.appendChild(note);
+  const share = document.createElement("button");
+  share.textContent = "Copy result";
+  const text = "Dialogue Detangle — “" + d.title + "” (" + d.level + "): " + (strikes === 0 ? "perfect!" : strikes + " wrong taps");
+  share.onclick = () => navigator.clipboard.writeText(text).then(() => { share.textContent = "Copied!"; }, () => {});
+  box.appendChild(share);
+  const again = document.createElement("button");
+  again.textContent = "Shuffle again";
+  again.onclick = () => load(DIALOGUES.indexOf(d));
+  box.appendChild(again);
+}
+
+/* ---- init ---- */
+const sel = $("dialogue-select");
+DIALOGUES.forEach((dd, i) => {
+  const o = document.createElement("option");
+  o.value = i;
+  o.textContent = (i + 1) + ". " + dd.title + " (" + dd.level + ")";
+  sel.appendChild(o);
+});
+sel.onchange = () => load(Number(sel.value));
+const params = new URLSearchParams(location.search);
+const start = params.has("p") ? Math.min(Math.max(Number(params.get("p")) - 1, 0), DIALOGUES.length - 1) : 0;
+load(start);
+sel.value = start;
+</script>
+</body>
+</html>

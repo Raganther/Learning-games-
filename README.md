@@ -14,6 +14,9 @@ them for English learners.
 | `prototypes/story-reveal/` | **Story Reveal** — discovery game: a graded text hides behind blocks; guess words to uncover it and name the topic (reading/prediction) |
 | `prototypes/sound-sprint/` | **Sound Sprint** — arcade listening game: minimal-pair rounds (ship/sheep) with streaks, using the browser's built-in speech engine |
 | `prototypes/grammar-casino/` | **Grammar Casino** — confidence game: bet chips on whether a sentence is correct English; every round ends with a one-line lesson |
+| `prototypes/dialogue-detangle/` | **Dialogue Detangle** — reconstruction game: a shuffled conversation in a chat interface; tap the line that comes next (pragmatics/discourse) |
+| `prototypes/emoji-idioms/` | **Emoji Idioms** — riddle game: decode idioms from emoji (🍰👌 = a piece of cake) with a hint ladder and meaning + example each round |
+| `prototypes/lost-in-london/` | **Lost in London** — narrative game: a day in the city where you choose what to say; a rapport meter reacts to your politeness, and you leave with a phrasebook |
 
 All prototypes are single self-contained `index.html` files — open in any browser, no build step, content editable at the top of each file.
 

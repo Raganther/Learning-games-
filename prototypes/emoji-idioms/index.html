@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Emoji Idioms</title>
+<style>
+  :root {
+    --bg: #fdf6ec; --text: #33261a; --muted: #96826c;
+    --card: #ffffff; --border: #ecdcc6; --accent: #d95d39;
+    --good: #2c8a4b; --gold: #e0a428;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #201a12; --text: #f2e8da; --muted: #a5937c;
+      --card: #2b2318; --border: #453824; --accent: #f0784f;
+      --good: #55c07a; --gold: #edc25c;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fdf6ec; --text: #33261a; --muted: #96826c;
+    --card: #ffffff; --border: #ecdcc6; --accent: #d95d39;
+    --good: #2c8a4b; --gold: #e0a428;
+  }
+  :root[data-theme="dark"] {
+    --bg: #201a12; --text: #f2e8da; --muted: #a5937c;
+    --card: #2b2318; --border: #453824; --accent: #f0784f;
+    --good: #55c07a; --gold: #edc25c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 520px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .hud { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .hud .pts { color: var(--gold); }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px 18px 20px; margin-bottom: 12px;
+  }
+  .emoji { font-size: 3.4rem; letter-spacing: 0.1em; margin: 4px 0 14px; }
+  .hint-line { min-height: 1.5em; color: var(--muted); font-style: italic; margin-bottom: 12px; }
+  .guess-row { display: flex; gap: 8px; }
+  #guess-input {
+    flex: 1; font: inherit; font-size: 1rem; padding: 11px 14px;
+    border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  }
+  #guess-input:focus { outline: 2px solid var(--accent); }
+  .guess-row button {
+    font: inherit; font-weight: 800; padding: 11px 20px; border-radius: 12px;
+    border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .aux { margin-top: 10px; }
+  .aux button {
+    font: inherit; font-size: 0.85rem; padding: 6px 14px; margin: 0 4px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); cursor: pointer;
+  }
+  .feedback { min-height: 1.5em; font-weight: 800; margin-top: 10px; }
+  .feedback.good { color: var(--good); }
+  .feedback.miss { color: var(--accent); }
+  .answer-card {
+    background: var(--card); border: 1px solid var(--good); border-radius: 12px;
+    padding: 14px 16px; text-align: left; margin-bottom: 12px;
+  }
+  .answer-card .idiom { font-weight: 800; font-size: 1.1rem; }
+  .answer-card .meaning { margin: 4px 0; }
+  .answer-card .example { color: var(--muted); font-style: italic; }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 12px 30px;
+    border-radius: 999px; border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .endbox h2 { margin: 4px 0; }
+  .endbox .score { font-size: 2rem; font-weight: 800; color: var(--gold); }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Emoji Idioms</h1>
+  <p class="subtitle">Each emoji riddle hides an English idiom. Type it! Hints cost points.</p>
+
+  <div class="hud">
+    <span id="progress">1/10</span>
+    <span class="pts" id="points">0 pts</span>
+  </div>
+
+  <div class="card" id="play-card">
+    <div class="emoji" id="emoji"></div>
+    <div class="hint-line" id="hint-line"></div>
+    <div class="guess-row">
+      <input id="guess-input" type="text" autocomplete="off" placeholder="Type the idiom…">
+      <button id="guess-btn">Guess</button>
+    </div>
+    <div class="aux">
+      <button id="hint-btn">Hint (−1 pt)</button>
+      <button id="reveal-btn">Give up</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <div class="answer-card hidden" id="answer-card">
+    <div class="idiom" id="a-idiom"></div>
+    <div class="meaning" id="a-meaning"></div>
+    <div class="example" id="a-example"></div>
+    <p style="text-align:center;margin:12px 0 0"><button class="primary" id="next-btn">Next riddle</button></p>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 6 · idioms are editable in this file</footer>
+</div>
+
+<script>
+/* ============ IDIOMS — edit or add here ============
+   emoji:   the riddle
+   answer:  the idiom, displayed after solving
+   req:     groups of acceptable substrings — the guess must contain
+            one substring from EVERY group (handles plurals/variants)
+   meaning: shown as hint 1 and in the answer card
+   example: a sentence using the idiom */
+const IDIOMS = [
+  { emoji: "🍰👌", answer: "a piece of cake", req: [["piece"], ["cake"]],
+    meaning: "something very easy to do", example: "Don't worry about the test — it was a piece of cake." },
+  { emoji: "🌧️🐱🐶", answer: "raining cats and dogs", req: [["rain"], ["cat"], ["dog"]],
+    meaning: "raining extremely heavily", example: "Take an umbrella — it's raining cats and dogs out there!" },
+  { emoji: "🥶🦶", answer: "cold feet", req: [["cold"], ["feet", "foot"]],
+    meaning: "suddenly feeling too nervous to do something you planned", example: "He got cold feet the night before the wedding." },
+  { emoji: "☔🤒", answer: "under the weather", req: [["under"], ["weather"]],
+    meaning: "feeling slightly ill", example: "I'm staying home today — I'm a bit under the weather." },
+  { emoji: "🛋️🥔", answer: "a couch potato", req: [["couch", "sofa"], ["potato"]],
+    meaning: "a person who sits around watching TV all day", example: "He became a real couch potato over the holidays." },
+  { emoji: "🌙🦉", answer: "a night owl", req: [["night"], ["owl"]],
+    meaning: "a person who likes staying up late", example: "She's a night owl — she does her best work after midnight." },
+  { emoji: "📚🐛", answer: "a bookworm", req: [["book"], ["worm"]],
+    meaning: "a person who loves reading", example: "My sister is a bookworm — she reads two novels a week." },
+  { emoji: "🧊🔨", answer: "break the ice", req: [["break"], ["ice"]],
+    meaning: "to make people feel relaxed when they first meet", example: "He told a joke to break the ice at the meeting." },
+  { emoji: "1️⃣🔵🌙", answer: "once in a blue moon", req: [["blue"], ["moon"]],
+    meaning: "very rarely", example: "We only see each other once in a blue moon now." },
+  { emoji: "🐘🛋️🤫", answer: "the elephant in the room", req: [["elephant"], ["room"]],
+    meaning: "a big problem everyone knows about but nobody mentions", example: "Nobody talked about the budget cuts — the elephant in the room." }
+];
+/* ============ end of idioms ============ */
+
+let order = [], current = 0, points = 0, hintsUsed = 0, roundOver = false;
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle(IDIOMS);
+  current = 0; points = 0;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("play-card").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  showRound();
+}
+
+function showRound() {
+  const item = order[current];
+  hintsUsed = 0; roundOver = false;
+  $("progress").textContent = (current + 1) + "/" + order.length;
+  $("points").textContent = points + " pts";
+  $("emoji").textContent = item.emoji;
+  $("hint-line").textContent = "";
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  $("guess-input").value = "";
+  $("guess-input").disabled = false;
+  $("guess-btn").disabled = false;
+  $("hint-btn").disabled = false;
+  $("hint-btn").textContent = "Hint (−1 pt)";
+  $("answer-card").classList.add("hidden");
+  $("play-card").classList.remove("hidden");
+  $("guess-input").focus();
+}
+
+function normalize(s) { return s.toLowerCase().replace(/[^a-z ]/g, " "); }
+
+function isCorrect(guess) {
+  const g = normalize(guess);
+  return order[current].req.every(group => group.some(sub => g.includes(sub)));
+}
+
+function submitGuess() {
+  if (roundOver) return;
+  const raw = $("guess-input").value.trim();
+  if (!raw) return;
+  if (isCorrect(raw)) {
+    const earned = Math.max(3 - hintsUsed, 1);
+    points += earned;
+    finishRound(true, earned);
+  } else {
+    $("feedback").textContent = "Not that one — look at the emoji again!";
+    $("feedback").className = "feedback miss";
+    $("guess-input").select();
+  }
+}
+
+function giveHint() {
+  const item = order[current];
+  if (hintsUsed === 0) {
+    $("hint-line").textContent = "Meaning: " + item.meaning;
+    $("hint-btn").textContent = "Another hint (−1 pt)";
+  } else {
+    const firsts = item.answer.split(" ").map(w => w[0].toUpperCase() + "…").join(" ");
+    $("hint-line").textContent = "Meaning: " + item.meaning + " — Starts: " + firsts;
+    $("hint-btn").disabled = true;
+  }
+  hintsUsed++;
+}
+
+function finishRound(won, earned) {
+  roundOver = true;
+  const item = order[current];
+  $("guess-input").disabled = true;
+  $("guess-btn").disabled = true;
+  $("hint-btn").disabled = true;
+  const fb = $("feedback");
+  if (won) {
+    fb.textContent = "Yes! +" + earned + " point" + (earned > 1 ? "s" : "");
+    fb.className = "feedback good";
+  } else {
+    fb.textContent = "";
+  }
+  $("points").textContent = points + " pts";
+  $("a-idiom").textContent = item.emoji + "  =  “" + item.answer + "”";
+  $("a-meaning").textContent = item.meaning.charAt(0).toUpperCase() + item.meaning.slice(1) + ".";
+  $("a-example").textContent = "“" + item.example + "”";
+  $("next-btn").textContent = current + 1 >= order.length ? "See results" : "Next riddle";
+  $("answer-card").classList.remove("hidden");
+}
+
+function next() {
+  current++;
+  if (current >= order.length) { endGame(); return; }
+  showRound();
+}
+
+function endGame() {
+  $("play-card").classList.add("hidden");
+  $("answer-card").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  const max = order.length * 3;
+  let rating;
+  const pct = points / max;
+  if (pct >= 0.9) rating = "Idiom master — you could write greeting cards.";
+  else if (pct >= 0.6) rating = "Impressive — your English has personality.";
+  else if (pct >= 0.3) rating = "Good start — idioms take time. Replay to lock them in!";
+  else rating = "Every idiom you met today is one you'll recognise next time.";
+  box.innerHTML = "<h2>All riddles done!</h2>" +
+    "<p class='score'>" + points + "/" + max + "</p>" +
+    "<p></p>" +
+    "<p><button class='primary' id='again-btn'>Play again</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--card);color:var(--text);border:1px solid var(--border)'>Copy result</button></p>";
+  box.querySelectorAll("p")[1].textContent = rating;
+  $("again-btn").onclick = startGame;
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Emoji Idioms — " + points + "/" + max + " points").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+$("guess-btn").onclick = submitGuess;
+$("guess-input").addEventListener("keydown", e => { if (e.key === "Enter") submitGuess(); });
+$("hint-btn").onclick = giveHint;
+$("reveal-btn").onclick = () => { if (!roundOver) finishRound(false, 0); };
+$("next-btn").onclick = next;
+startGame();
+</script>
+</body>
+</html>
