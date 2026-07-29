@@ -10,7 +10,12 @@ them for English learners.
 |------|----------|
 | `research/game-dynamics.md` | The main catalog: why Contexto works, 12 adaptable game dynamics, ESL design principles, and engagement meta-mechanics |
 | `research/prototype-shortlist.md` | Ranked build candidates with effort estimates and tech notes |
-| `prototypes/connections/` | **ESL Connections** — playable prototype; open `index.html` in a browser. Connections-style grid where groups encode collocations, phrasal verbs, spelling and register, with a mini-lesson per solved group |
+| `prototypes/connections/` | **ESL Connections** — grouping game: find four groups of four words linked by collocations, phrasal verbs, spelling or register; each solved group unlocks a mini-lesson |
+| `prototypes/story-reveal/` | **Story Reveal** — discovery game: a graded text hides behind blocks; guess words to uncover it and name the topic (reading/prediction) |
+| `prototypes/sound-sprint/` | **Sound Sprint** — arcade listening game: minimal-pair rounds (ship/sheep) with streaks, using the browser's built-in speech engine |
+| `prototypes/grammar-casino/` | **Grammar Casino** — confidence game: bet chips on whether a sentence is correct English; every round ends with a one-line lesson |
+
+All prototypes are single self-contained `index.html` files — open in any browser, no build step, content editable at the top of each file.
 
 ## Starting point
 

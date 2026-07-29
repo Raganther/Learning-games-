@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Story Reveal</title>
+<style>
+  :root {
+    --bg: #faf7f0; --text: #2b2620; --muted: #8a8072;
+    --hidden-bg: #d8d2c4; --hidden-text: #d8d2c4;
+    --revealed-bg: #f3e9c8; --accent: #b07d2b;
+    --card: #ffffff; --border: #e0d9cb; --btn-border: #2b2620;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a16; --text: #ece7dd; --muted: #9a917f;
+      --hidden-bg: #3a362e; --hidden-text: #3a362e;
+      --revealed-bg: #4a3f22; --accent: #d9a648;
+      --card: #26221c; --border: #3a362e; --btn-border: #ece7dd;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #faf7f0; --text: #2b2620; --muted: #8a8072;
+    --hidden-bg: #d8d2c4; --hidden-text: #d8d2c4;
+    --revealed-bg: #f3e9c8; --accent: #b07d2b;
+    --card: #ffffff; --border: #e0d9cb; --btn-border: #2b2620;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1a16; --text: #ece7dd; --muted: #9a917f;
+    --hidden-bg: #3a362e; --hidden-text: #3a362e;
+    --revealed-bg: #4a3f22; --accent: #d9a648;
+    --card: #26221c; --border: #3a362e; --btn-border: #ece7dd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Georgia, "Times New Roman", serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 640px; padding: 20px 16px; }
+  header { text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin: 0 0 14px; font-style: italic; }
+  .toolbar { display: flex; justify-content: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  select, .toolbar button {
+    font-family: inherit; font-size: 0.85rem; padding: 6px 12px;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); cursor: pointer;
+  }
+  .topic-line {
+    text-align: center; font-size: 1.15rem; margin-bottom: 12px;
+    padding: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .story {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px; line-height: 2.0; font-size: 1.05rem;
+  }
+  .w { border-radius: 4px; padding: 1px 2px; }
+  .w.hidden { background: var(--hidden-bg); color: var(--hidden-text); user-select: none; letter-spacing: 1px; cursor: default; }
+  .w.fresh { background: var(--revealed-bg); transition: background 1.2s ease; }
+  .guess-row { display: flex; gap: 8px; margin-top: 14px; }
+  #guess-input {
+    flex: 1; font-family: inherit; font-size: 1.05rem; padding: 10px 14px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  #guess-input:focus { outline: 2px solid var(--accent); }
+  .guess-row button {
+    font-family: inherit; font-weight: 700; font-size: 1rem; padding: 10px 20px;
+    border-radius: 10px; border: 1px solid var(--btn-border); background: var(--text); color: var(--bg); cursor: pointer;
+  }
+  .feedback { text-align: center; min-height: 1.4em; margin: 10px 0 4px; font-weight: 700; }
+  .feedback .hitcount { color: var(--accent); }
+  .guessed {
+    margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  }
+  .guessed span {
+    font-size: 0.85rem; background: var(--card); border: 1px solid var(--border);
+    border-radius: 999px; padding: 3px 10px; color: var(--muted);
+  }
+  .guessed span.hit { color: var(--text); border-color: var(--accent); }
+  .endbox { text-align: center; margin-top: 14px; }
+  .endbox .big { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+  .endbox button {
+    font-family: inherit; font-weight: 700; padding: 10px 20px; border-radius: 999px;
+    border: 1px solid var(--btn-border); background: var(--card); color: var(--text); cursor: pointer; margin: 4px;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 22px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Story Reveal</h1>
+    <p class="subtitle">A story is hiding. Guess words to uncover it — and name the topic.</p>
+  </header>
+
+  <div class="toolbar">
+    <select id="puzzle-select" aria-label="Choose story"></select>
+    <button id="giveup-btn">Reveal everything</button>
+  </div>
+
+  <div class="topic-line" id="topic-line"></div>
+  <div class="story" id="story"></div>
+
+  <div class="guess-row">
+    <input id="guess-input" type="text" autocomplete="off" placeholder="Type a word you expect to be in the story…">
+    <button id="guess-btn">Guess</button>
+  </div>
+  <div class="feedback" id="feedback"></div>
+  <div class="guessed" id="guessed"></div>
+  <div class="endbox" id="endbox"></div>
+
+  <footer>Learning Games — prototype 2 · common little words (the, and, is…) start revealed</footer>
+</div>
+
+<script>
+/* ============ STORIES — edit or add here ============
+   title: the topic to discover (its content words are the win condition)
+   level: CEFR level shown to the player
+   text:  ~100 words at that level */
+const STORIES = [
+  {
+    title: "Penguins",
+    level: "A2",
+    text: "Penguins are birds, but they cannot fly. They live in the cold south of the world, and many live in Antarctica. Their black and white feathers keep them warm and dry. Penguins are slow on land, but in the water they are fast and strong swimmers. They eat fish and other small sea animals. A mother penguin lays one or two eggs. Then the father often holds the egg on his feet to keep it warm. Penguins live together in very large groups, and they call to each other with loud voices."
+  },
+  {
+    title: "The History of Pizza",
+    level: "B1",
+    text: "Pizza began as cheap street food in Naples, an Italian city by the sea. Poor workers needed fast meals, so bakers sold flat bread with tomatoes, oil and garlic. In 1889, a famous baker made a special pizza for Queen Margherita, using tomatoes, white cheese and green basil to show the colours of the Italian flag. Italian families later carried the recipe to America, where the first pizzerias opened in New York. After the Second World War, pizza spread across the world. Today people everywhere argue about the best topping, but the simple idea has never changed."
+  },
+  {
+    title: "Why We Sleep",
+    level: "B2",
+    text: "Sleep looks like wasted time, yet the brain treats it as essential work. While the body rests, the brain sorts the memories of the day, keeping what matters and quietly deleting the rest. It also washes out chemical waste that builds up between cells during busy hours. People who regularly sleep less than seven hours tend to struggle with attention, mood and even the immune system. Scientists still debate many details, but they agree on the basic message: a good night is not a luxury. It is the cheapest medicine we have, and it is completely free."
+  }
+];
+/* ============ end of stories ============ */
+
+const FUNCTION_WORDS = new Set(("the a an and or but if so of to in on at by for with from as is are was were be been being am do does did done has have had will would can could should may might must shall not no nor it its he she they them we us you i me my his her their our your this that these those there here who what which when where why how all any some many much more most other each every both few little lot lots than then just also only very too again once about into over under during before after between through because while until since yet") .split(" "));
+
+let storyIndex = 0;
+let tokens = [];        // {text, isWord, norm, revealed}
+let titleTokens = [];
+let guesses = [];       // {word, hits}
+let guessedSet = new Set();
+let solved = false;
+
+const $ = (id) => document.getElementById(id);
+
+function normalize(w) { return w.toLowerCase().replace(/[’']/g, "'"); }
+
+/* forgiving match: guess "run" reveals "runs/running/ran"? No — only simple
+   inflections, not irregular forms. Both directions, common suffixes. */
+function stems(word) {
+  const out = new Set([word]);
+  const add = (w) => { if (w.length > 1) out.add(w); };
+  for (const suf of ["s", "es", "ed", "d", "ing"]) {
+    if (word.endsWith(suf)) {
+      const base = word.slice(0, -suf.length);
+      add(base);
+      add(base + "e");
+      if (base.length > 2 && base[base.length - 1] === base[base.length - 2]) add(base.slice(0, -1));
+    }
+  }
+  if (word.endsWith("ies")) add(word.slice(0, -3) + "y");
+  if (word.endsWith("ied")) add(word.slice(0, -3) + "y");
+  return out;
+}
+function matches(guess, word) {
+  if (guess === word) return true;
+  const gs = stems(guess), ws = stems(word);
+  for (const g of gs) if (ws.has(g)) return true;
+  return false;
+}
+
+function tokenize(text) {
+  const parts = text.match(/[A-Za-z’']+|[^A-Za-z’']+/g) || [];
+  return parts.map(p => {
+    const isWord = /[A-Za-z]/.test(p);
+    const norm = isWord ? normalize(p) : "";
+    return { text: p, isWord, norm, revealed: !isWord || FUNCTION_WORDS.has(norm) };
+  });
+}
+
+function loadStory(i) {
+  storyIndex = i;
+  const s = STORIES[i];
+  tokens = tokenize(s.text);
+  titleTokens = tokenize(s.title);
+  guesses = [];
+  guessedSet = new Set();
+  solved = false;
+  $("feedback").textContent = "";
+  $("endbox").innerHTML = "";
+  $("guess-input").value = "";
+  $("guess-input").disabled = false;
+  $("guess-btn").disabled = false;
+  render();
+  $("guess-input").focus();
+}
+
+function renderTokens(list, container) {
+  container.innerHTML = "";
+  for (const t of list) {
+    if (!t.isWord) { container.appendChild(document.createTextNode(t.text)); continue; }
+    const span = document.createElement("span");
+    span.className = "w " + (t.revealed ? (t.fresh ? "fresh" : "") : "hidden");
+    span.textContent = t.revealed ? t.text : "█".repeat(t.text.length);
+    if (!t.revealed) span.title = t.text.length + " letters";
+    container.appendChild(span);
+    t.fresh = false;
+  }
+}
+
+function render() {
+  const s = STORIES[storyIndex];
+  const topic = $("topic-line");
+  topic.innerHTML = "<strong>Topic (" + s.level + "):</strong> ";
+  renderTokensInline(titleTokens, topic);
+  renderTokens(tokens, $("story"));
+
+  const g = $("guessed");
+  g.innerHTML = "";
+  for (const item of guesses.slice().reverse()) {
+    const el = document.createElement("span");
+    el.textContent = item.word + (item.hits ? " ×" + item.hits : "");
+    if (item.hits) el.className = "hit";
+    g.appendChild(el);
+  }
+}
+
+function renderTokensInline(list, container) {
+  for (const t of list) {
+    if (!t.isWord) { container.appendChild(document.createTextNode(t.text)); continue; }
+    const span = document.createElement("span");
+    span.className = "w " + (t.revealed ? "" : "hidden");
+    span.textContent = t.revealed ? t.text : "█".repeat(t.text.length);
+    container.appendChild(span);
+  }
+}
+
+function submitGuess() {
+  if (solved) return;
+  const raw = $("guess-input").value.trim();
+  $("guess-input").value = "";
+  if (!raw || !/^[A-Za-z’']+$/.test(raw)) { $("feedback").textContent = "One word, letters only."; return; }
+  const guess = normalize(raw);
+  if (guessedSet.has(guess)) { $("feedback").textContent = "You already tried “" + raw + "”."; return; }
+  guessedSet.add(guess);
+
+  let hits = 0;
+  for (const t of tokens) if (t.isWord && !t.revealed && matches(guess, t.norm)) { t.revealed = true; t.fresh = true; hits++; }
+  for (const t of titleTokens) if (t.isWord && !t.revealed && matches(guess, t.norm)) { t.revealed = true; hits++; }
+
+  guesses.push({ word: guess, hits });
+  $("feedback").innerHTML = hits
+    ? "“" + raw + "” — <span class='hitcount'>revealed " + hits + " word" + (hits > 1 ? "s" : "") + "!</span>"
+    : "“" + raw + "” is not in the story.";
+
+  if (titleTokens.every(t => t.revealed)) win(false);
+  render();
+  $("guess-input").focus();
+}
+
+function win(gaveUp) {
+  solved = true;
+  for (const t of tokens) t.revealed = true;
+  for (const t of titleTokens) t.revealed = true;
+  $("guess-input").disabled = true;
+  $("guess-btn").disabled = true;
+  const s = STORIES[storyIndex];
+  const nGuesses = guesses.length;
+  const box = $("endbox");
+  box.innerHTML = "";
+  const big = document.createElement("div");
+  big.className = "big";
+  big.textContent = gaveUp
+    ? "The topic was “" + s.title + "”. Read the story, then try the next one!"
+    : "You found it: “" + s.title + "” in " + nGuesses + " guesses! \u{1F389}";
+  box.appendChild(big);
+  if (!gaveUp) {
+    const btn = document.createElement("button");
+    btn.textContent = "Copy result";
+    const shareText = "Story Reveal — “" + s.title + "” (" + s.level + ") in " + nGuesses + " guesses";
+    btn.onclick = () => navigator.clipboard.writeText(shareText).then(() => { btn.textContent = "Copied!"; }, () => {});
+    box.appendChild(btn);
+  }
+  render();
+}
+
+/* ---- init ---- */
+const sel = $("puzzle-select");
+STORIES.forEach((s, i) => {
+  const o = document.createElement("option");
+  o.value = i;
+  o.textContent = "Story " + (i + 1) + " (" + s.level + ")";
+  sel.appendChild(o);
+});
+sel.onchange = () => loadStory(Number(sel.value));
+$("guess-btn").onclick = submitGuess;
+$("guess-input").addEventListener("keydown", (e) => { if (e.key === "Enter") submitGuess(); });
+$("giveup-btn").onclick = () => { if (!solved) win(true); };
+
+const params = new URLSearchParams(location.search);
+loadStory(params.has("p") ? Math.min(Math.max(Number(params.get("p")) - 1, 0), STORIES.length - 1) : 0);
+sel.value = storyIndex;
+</script>
+</body>
+</html>

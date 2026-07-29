@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grammar Casino</title>
+<style>
+  :root {
+    --bg: #eef2ec; --text: #1c2a1e; --muted: #5f7263;
+    --felt: #206b3c; --felt-dark: #185530; --felt-text: #f2f7ee;
+    --card: #ffffff; --border: #d3ddd2; --gold: #c9a227;
+    --good: #1d7a3f; --bad: #b23a48;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131a14; --text: #e6efe6; --muted: #90a894;
+      --felt: #1b5732; --felt-dark: #144426; --felt-text: #eef7ec;
+      --card: #1d271f; --border: #31402f; --gold: #e0bb44;
+      --good: #46b56e; --bad: #ee7b88;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #eef2ec; --text: #1c2a1e; --muted: #5f7263;
+    --felt: #206b3c; --felt-dark: #185530; --felt-text: #f2f7ee;
+    --card: #ffffff; --border: #d3ddd2; --gold: #c9a227;
+    --good: #1d7a3f; --bad: #b23a48;
+  }
+  :root[data-theme="dark"] {
+    --bg: #131a14; --text: #e6efe6; --muted: #90a894;
+    --felt: #1b5732; --felt-dark: #144426; --felt-text: #eef7ec;
+    --card: #1d271f; --border: #31402f; --gold: #e0bb44;
+    --good: #46b56e; --bad: #ee7b88;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 560px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 16px; }
+  .hud {
+    display: flex; justify-content: space-between; align-items: center;
+    font-weight: 800; margin-bottom: 12px; font-variant-numeric: tabular-nums;
+  }
+  .chips-label { color: var(--gold); font-size: 1.15rem; }
+  .table-felt {
+    background: var(--felt); color: var(--felt-text);
+    border: 6px solid var(--felt-dark); border-radius: 18px;
+    padding: 26px 20px; margin-bottom: 14px;
+  }
+  .sentence { font-size: 1.25rem; font-weight: 700; line-height: 1.5; margin: 4px 0 18px; }
+  .bets { display: flex; justify-content: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .chip {
+    width: 58px; height: 58px; border-radius: 50%; cursor: pointer;
+    border: 4px dashed rgba(255,255,255,0.85); background: var(--felt-dark);
+    color: var(--felt-text); font-weight: 800; font-size: 0.95rem;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .chip.c5 { background: #7a4b8f; } .chip.c10 { background: #3a5fb0; }
+  .chip.c25 { background: #b0483a; } .chip.c50 { background: #202020; }
+  .chip.selected { outline: 3px solid var(--gold); transform: scale(1.1); }
+  .chip:disabled { opacity: 0.35; cursor: default; }
+  .verdicts { display: flex; gap: 12px; }
+  .verdicts button {
+    flex: 1; font: inherit; font-size: 1.05rem; font-weight: 800;
+    padding: 16px 8px; border-radius: 12px; cursor: pointer; border: 2px solid transparent;
+  }
+  #ok-btn { background: var(--felt-text); color: var(--felt-dark); }
+  #bad-btn { background: var(--felt-dark); color: var(--felt-text); border-color: var(--felt-text); }
+  .verdicts button:disabled { opacity: 0.45; cursor: default; }
+  .result-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 14px; text-align: left;
+  }
+  .result-card .headline { font-weight: 800; margin-bottom: 6px; }
+  .result-card .headline.good { color: var(--good); }
+  .result-card .headline.bad { color: var(--bad); }
+  .result-card .fix { font-style: italic; margin-bottom: 6px; }
+  .result-card .note { color: var(--muted); font-size: 0.95rem; }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 12px 30px;
+    border-radius: 999px; border: none; background: var(--gold); color: #1c1608; cursor: pointer;
+  }
+  .endbox h2 { margin: 6px 0; }
+  .endbox .rating { color: var(--gold); font-weight: 800; font-size: 1.2rem; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Grammar Casino</h1>
+  <p class="subtitle">Is the sentence correct English? Bet chips on your answer — bet big only when you're sure.</p>
+
+  <div class="hud">
+    <span id="round-label">Round 1/10</span>
+    <span class="chips-label" id="chips-label">&#127183; 100</span>
+  </div>
+
+  <div class="table-felt" id="felt">
+    <div class="sentence" id="sentence"></div>
+    <div class="bets" id="bets">
+      <button class="chip c5" data-v="5">5</button>
+      <button class="chip c10" data-v="10">10</button>
+      <button class="chip c25" data-v="25">25</button>
+      <button class="chip c50" data-v="50">50</button>
+    </div>
+    <div class="verdicts">
+      <button id="ok-btn">&#10003; Correct</button>
+      <button id="bad-btn">&#10007; Wrong</button>
+    </div>
+  </div>
+
+  <div class="result-card hidden" id="result-card">
+    <div class="headline" id="result-headline"></div>
+    <div class="fix" id="result-fix"></div>
+    <div class="note" id="result-note"></div>
+    <p style="text-align:center;margin:12px 0 0"><button class="primary" id="next-btn">Next sentence</button></p>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 4 · sentences are editable in this file</footer>
+</div>
+
+<script>
+/* ============ SENTENCES — edit or add here ============
+   ok:   true if the sentence is correct English
+   fix:  the corrected sentence (only when ok is false)
+   note: the one-line lesson shown after betting */
+const SENTENCES = [
+  { text: "I look forward to hearing from you.", ok: true,
+    note: "After “look forward to”, use the -ing form. The “to” here is a preposition, not part of an infinitive." },
+  { text: "He suggested me to go home.", ok: false, fix: "He suggested that I go home. / He suggested going home.",
+    note: "“Suggest” never takes person + to-infinitive. Use suggest + that-clause or suggest + -ing." },
+  { text: "The police are investigating the case.", ok: true,
+    note: "“Police” is always plural in English: the police ARE, never “the police is”." },
+  { text: "She is married with a doctor.", ok: false, fix: "She is married to a doctor.",
+    note: "Married TO a person. “Married with” usually introduces children: “married with two kids”." },
+  { text: "I have been living here since three years.", ok: false, fix: "I have been living here for three years.",
+    note: "FOR + a length of time (for three years); SINCE + a starting point (since 2023)." },
+  { text: "Despite the rain, the match went ahead.", ok: true,
+    note: "“Despite” takes a noun directly — no “of”. (“In spite OF the rain” needs the of.)" },
+  { text: "He explained me the problem.", ok: false, fix: "He explained the problem to me.",
+    note: "“Explain” needs TO before the person. Compare “tell me” (no to) vs “explain to me”." },
+  { text: "If I had known, I would have called you.", ok: true,
+    note: "Third conditional: IF + past perfect, WOULD HAVE + past participle. Imaginary past." },
+  { text: "I am agree with your idea.", ok: false, fix: "I agree with your idea.",
+    note: "“Agree” is a verb, not an adjective — no “am”. (But: “I am happy with your idea.”)" },
+  { text: "The news are good today.", ok: false, fix: "The news is good today.",
+    note: "“News” looks plural but is uncountable: the news IS. Same family: advice, information, furniture." }
+];
+/* ============ end of sentences ============ */
+
+const START_CHIPS = 100;
+let order = [], round = 0, chips = START_CHIPS, bet = 10, correctCount = 0, gameDone = false;
+
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle(SENTENCES);
+  round = 0; chips = START_CHIPS; correctCount = 0; gameDone = false;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("felt").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  showRound();
+}
+
+function showRound() {
+  const item = order[round];
+  $("round-label").textContent = "Round " + (round + 1) + "/" + order.length;
+  $("chips-label").innerHTML = "&#127183; " + chips;
+  $("sentence").textContent = "“" + item.text + "”";
+  $("result-card").classList.add("hidden");
+  bet = Math.min(bet, chips);
+  document.querySelectorAll(".chip").forEach(c => {
+    const v = Number(c.dataset.v);
+    c.disabled = v > chips;
+    c.classList.toggle("selected", v === bet);
+    c.onclick = () => { bet = v; document.querySelectorAll(".chip").forEach(x => x.classList.toggle("selected", Number(x.dataset.v) === bet)); };
+  });
+  if (!document.querySelector(".chip.selected")) {
+    const avail = [...document.querySelectorAll(".chip")].filter(c => !c.disabled);
+    if (avail.length) { bet = Number(avail[0].dataset.v); avail[0].classList.add("selected"); }
+  }
+  $("ok-btn").disabled = false;
+  $("bad-btn").disabled = false;
+}
+
+function judge(saidCorrect) {
+  const item = order[round];
+  const right = saidCorrect === item.ok;
+  $("ok-btn").disabled = true;
+  $("bad-btn").disabled = true;
+  if (right) { chips += bet; correctCount++; } else { chips -= bet; }
+  $("chips-label").innerHTML = "&#127183; " + chips;
+
+  const card = $("result-card");
+  const head = $("result-headline");
+  head.textContent = right
+    ? "You win " + bet + " chips! The sentence is " + (item.ok ? "correct." : "wrong.")
+    : "You lose " + bet + " chips. The sentence is actually " + (item.ok ? "correct." : "wrong.");
+  head.className = "headline " + (right ? "good" : "bad");
+  $("result-fix").textContent = item.ok ? "" : "→ " + item.fix;
+  $("result-note").textContent = item.note;
+  card.classList.remove("hidden");
+  $("next-btn").textContent = (round + 1 >= order.length || chips <= 0) ? "See results" : "Next sentence";
+}
+
+function next() {
+  round++;
+  if (round >= order.length || chips <= 0) { endGame(); return; }
+  showRound();
+}
+
+function endGame() {
+  gameDone = true;
+  $("felt").classList.add("hidden");
+  $("result-card").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  let rating;
+  if (chips <= 0) rating = "Bust! The house always wins… until you study the notes.";
+  else if (chips >= 300) rating = "Card shark — native-level instincts.";
+  else if (chips >= 200) rating = "High roller — sharp eye for errors.";
+  else if (chips > 100) rating = "In profit — solid grammar radar.";
+  else if (chips === 100) rating = "Broke even — cautious but steady.";
+  else rating = "Down on the night — reread the notes and win it back.";
+  box.innerHTML = "<h2>Cashing out</h2>" +
+    "<p style='font-size:1.6rem;font-weight:800;margin:4px 0'>&#127183; " + Math.max(chips, 0) + " chips</p>" +
+    "<p class='rating'></p>" +
+    "<p style='color:var(--muted)'>" + correctCount + "/" + order.length + " sentences judged correctly</p>" +
+    "<p><button class='primary' id='again-btn'>Play again</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--card);color:var(--text);border:1px solid var(--border)'>Copy result</button></p>";
+  box.querySelector(".rating").textContent = rating;
+  $("again-btn").onclick = startGame;
+  $("share-btn").onclick = () => {
+    const text = "Grammar Casino — cashed out with " + Math.max(chips, 0) + " chips (" + correctCount + "/" + order.length + " right)";
+    navigator.clipboard.writeText(text).then(() => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+$("ok-btn").onclick = () => judge(true);
+$("bad-btn").onclick = () => judge(false);
+$("next-btn").onclick = next;
+startGame();
+</script>
+</body>
+</html>

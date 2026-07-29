@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sound Sprint</title>
+<style>
+  :root {
+    --bg: #f2f4fa; --text: #171a2b; --muted: #6a6f8a;
+    --card: #ffffff; --border: #d7dbea; --accent: #3a53d8;
+    --good: #1d9a55; --bad: #ce3c4e; --streak: #d87f1f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161f; --text: #e8eaf4; --muted: #8d92ac;
+      --card: #1e2130; --border: #313650; --accent: #7d90f2;
+      --good: #3fc47c; --bad: #f2707f; --streak: #f2a24b;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f2f4fa; --text: #171a2b; --muted: #6a6f8a;
+    --card: #ffffff; --border: #d7dbea; --accent: #3a53d8;
+    --good: #1d9a55; --bad: #ce3c4e; --streak: #d87f1f;
+  }
+  :root[data-theme="dark"] {
+    --bg: #14161f; --text: #e8eaf4; --muted: #8d92ac;
+    --card: #1e2130; --border: #313650; --accent: #7d90f2;
+    --good: #3fc47c; --bad: #f2707f; --streak: #f2a24b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 520px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; letter-spacing: 0.02em; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 18px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px 18px; margin-bottom: 14px;
+  }
+  .hud {
+    display: flex; justify-content: space-between; align-items: center;
+    font-variant-numeric: tabular-nums; font-weight: 700; margin-bottom: 12px;
+  }
+  .hud .streak { color: var(--streak); }
+  .bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 18px; }
+  .bar div { height: 100%; background: var(--accent); width: 0%; transition: width 0.25s ease; }
+  .contrast-label { color: var(--muted); font-size: 0.9rem; margin-bottom: 12px; }
+  .speaker-btn {
+    font-size: 2.2rem; width: 88px; height: 88px; border-radius: 50%;
+    border: 2px solid var(--accent); background: var(--card); color: var(--accent);
+    cursor: pointer; margin-bottom: 6px;
+  }
+  .speaker-btn:active { transform: scale(0.94); }
+  .small-controls { margin-bottom: 16px; }
+  .small-controls button {
+    font: inherit; font-size: 0.82rem; padding: 5px 12px; margin: 0 4px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--card);
+    color: var(--muted); cursor: pointer;
+  }
+  .choices { display: flex; gap: 12px; }
+  .choices button {
+    flex: 1; font: inherit; font-size: 1.3rem; font-weight: 800; letter-spacing: 0.02em;
+    padding: 22px 8px; border-radius: 14px; cursor: pointer;
+    border: 2px solid var(--border); background: var(--card); color: var(--text);
+  }
+  .choices button.correct { border-color: var(--good); background: color-mix(in srgb, var(--good) 18%, var(--card)); }
+  .choices button.wrong { border-color: var(--bad); background: color-mix(in srgb, var(--bad) 18%, var(--card)); }
+  .choices button:disabled { cursor: default; }
+  .feedback { min-height: 1.5em; font-weight: 800; margin-top: 12px; }
+  .feedback.good { color: var(--good); } .feedback.bad { color: var(--bad); }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1.05rem; padding: 14px 34px;
+    border-radius: 999px; border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  select {
+    font: inherit; font-size: 0.85rem; padding: 6px 10px; max-width: 100%;
+    border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+  td, th { padding: 6px 8px; border-bottom: 1px solid var(--border); text-align: left; }
+  td:last-child, th:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  .advice { margin-top: 12px; font-weight: 700; color: var(--accent); }
+  .warn { color: var(--bad); font-weight: 600; margin-top: 8px; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Sound Sprint</h1>
+  <p class="subtitle">You'll hear a word. Tap the one you heard. 20 rounds — build a streak!</p>
+
+  <!-- start screen -->
+  <div class="card" id="start-card">
+    <p style="margin-top:0">Minimal pairs are word twins that differ by one sound — <em>ship/sheep</em>, <em>berry/very</em>. Telling them apart is a trainable skill.</p>
+    <p><label>Voice: <select id="voice-select"></select></label></p>
+    <button class="primary" id="start-btn">Start sprint</button>
+    <div class="warn hidden" id="tts-warn">This browser has no speech voices — audio won't play. Try Chrome or Edge.</div>
+  </div>
+
+  <!-- game screen -->
+  <div class="card hidden" id="game-card">
+    <div class="hud">
+      <span id="round-label">1/20</span>
+      <span class="streak" id="streak-label"></span>
+      <span id="score-label">Score 0</span>
+    </div>
+    <div class="bar"><div id="bar-fill"></div></div>
+    <div class="contrast-label" id="contrast-label"></div>
+    <button class="speaker-btn" id="speaker-btn" title="Play the word">&#128266;</button>
+    <div class="small-controls">
+      <button id="slow-btn">&#128034; slower</button>
+    </div>
+    <div class="choices">
+      <button id="choice-0"></button>
+      <button id="choice-1"></button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+  </div>
+
+  <!-- results screen -->
+  <div class="card hidden" id="end-card">
+    <h2 style="margin-top:0">Sprint finished!</h2>
+    <p style="font-size:1.3rem;font-weight:800;margin:4px 0" id="final-score"></p>
+    <p id="final-streak" style="color:var(--muted);margin:0 0 14px"></p>
+    <table id="results-table"></table>
+    <div class="advice" id="advice"></div>
+    <p style="margin-top:16px">
+      <button class="primary" id="again-btn">Sprint again</button>
+      <button class="primary" id="copy-btn" style="background:var(--card);color:var(--text);border:1px solid var(--border)">Copy result</button>
+    </p>
+  </div>
+
+  <footer>Learning Games — prototype 3 · audio is generated by your browser, nothing is downloaded</footer>
+</div>
+
+<script>
+/* ============ CONTRASTS — edit or add here ============ */
+const CONTRASTS = [
+  { id: "i-ee", label: "short i vs long ee  (ship–sheep)",
+    pairs: [["ship","sheep"],["chip","cheap"],["live","leave"],["sit","seat"],["fill","feel"],["hit","heat"],["bin","bean"],["slip","sleep"]] },
+  { id: "a-u", label: "a vs u  (cat–cut)",
+    pairs: [["cat","cut"],["cap","cup"],["bag","bug"],["hat","hut"],["ran","run"],["match","much"]] },
+  { id: "b-v", label: "b vs v  (berry–very)",
+    pairs: [["berry","very"],["ban","van"],["boat","vote"],["best","vest"],["bet","vet"],["curb","curve"]] },
+  { id: "l-r", label: "l vs r  (light–right)",
+    pairs: [["light","right"],["glass","grass"],["fly","fry"],["lane","rain"],["long","wrong"],["collect","correct"]] },
+  { id: "th-st", label: "th vs s/t  (think–sink)",
+    pairs: [["think","sink"],["thick","sick"],["three","tree"],["mouth","mouse"],["thank","tank"],["path","pass"]] }
+];
+/* ============ end of contrasts ============ */
+
+const TOTAL_ROUNDS = 20;
+
+let rounds = [];       // {contrast, pair, targetIdx}
+let current = 0;
+let score = 0, streak = 0, bestStreak = 0;
+let perContrast = {};  // id -> {label, right, total}
+let locked = false;
+let voice = null;
+
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function buildRounds() {
+  const list = [];
+  for (let i = 0; i < TOTAL_ROUNDS; i++) {
+    const c = CONTRASTS[i % CONTRASTS.length];
+    const pair = c.pairs[Math.floor(Math.random() * c.pairs.length)];
+    list.push({ contrast: c, pair, targetIdx: Math.random() < 0.5 ? 0 : 1 });
+  }
+  return shuffle(list);
+}
+
+/* ---- speech ---- */
+function englishVoices() {
+  return (speechSynthesis.getVoices() || []).filter(v => v.lang && v.lang.toLowerCase().startsWith("en"));
+}
+function populateVoices() {
+  const vs = englishVoices();
+  const sel = $("voice-select");
+  sel.innerHTML = "";
+  if (!vs.length) { $("tts-warn").classList.remove("hidden"); return; }
+  $("tts-warn").classList.add("hidden");
+  vs.forEach((v, i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = v.name + " (" + v.lang + ")";
+    sel.appendChild(o);
+  });
+  const preferred = vs.findIndex(v => /google|natural|online/i.test(v.name));
+  sel.value = preferred >= 0 ? preferred : 0;
+}
+function speak(word, rate) {
+  if (!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(word);
+  const vs = englishVoices();
+  const chosen = vs[Number($("voice-select").value)] || vs[0];
+  if (chosen) u.voice = chosen;
+  u.rate = rate || 0.9;
+  speechSynthesis.speak(u);
+}
+
+/* ---- game flow ---- */
+function startSprint() {
+  rounds = buildRounds();
+  current = 0; score = 0; streak = 0; bestStreak = 0;
+  perContrast = {};
+  for (const c of CONTRASTS) perContrast[c.id] = { label: c.label, right: 0, total: 0 };
+  $("start-card").classList.add("hidden");
+  $("end-card").classList.add("hidden");
+  $("game-card").classList.remove("hidden");
+  playRound();
+}
+
+function playRound() {
+  locked = false;
+  const r = rounds[current];
+  $("round-label").textContent = (current + 1) + "/" + TOTAL_ROUNDS;
+  $("score-label").textContent = "Score " + score;
+  $("streak-label").textContent = streak >= 2 ? "\u{1F525} streak " + streak : "";
+  $("bar-fill").style.width = (current / TOTAL_ROUNDS * 100) + "%";
+  $("contrast-label").textContent = r.contrast.label;
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  const order = Math.random() < 0.5 ? [0, 1] : [1, 0];
+  [0, 1].forEach(slot => {
+    const btn = $("choice-" + slot);
+    btn.textContent = r.pair[order[slot]];
+    btn.dataset.pairIdx = order[slot];
+    btn.className = ""; btn.disabled = false;
+  });
+  setTimeout(() => speak(r.pair[r.targetIdx]), 300);
+}
+
+function answer(slot) {
+  if (locked) return;
+  locked = true;
+  const r = rounds[current];
+  const chosenIdx = Number($("choice-" + slot).dataset.pairIdx);
+  const correct = chosenIdx === r.targetIdx;
+  const stats = perContrast[r.contrast.id];
+  stats.total++;
+  [0, 1].forEach(s => {
+    const b = $("choice-" + s);
+    b.disabled = true;
+    const idx = Number(b.dataset.pairIdx);
+    if (idx === r.targetIdx) b.classList.add("correct");
+    else if (s === slot) b.classList.add("wrong");
+  });
+  const fb = $("feedback");
+  if (correct) {
+    score += 10 + Math.min(streak, 5) * 2;
+    streak++; bestStreak = Math.max(bestStreak, streak);
+    stats.right++;
+    fb.textContent = "Yes — “" + r.pair[r.targetIdx] + "”";
+    fb.classList.add("good");
+  } else {
+    streak = 0;
+    fb.textContent = "It was “" + r.pair[r.targetIdx] + "”";
+    fb.classList.add("bad");
+  }
+  $("score-label").textContent = "Score " + score;
+  current++;
+  setTimeout(current < TOTAL_ROUNDS ? playRound : showResults, 1100);
+}
+
+function showResults() {
+  $("game-card").classList.add("hidden");
+  $("end-card").classList.remove("hidden");
+  const right = Object.values(perContrast).reduce((a, s) => a + s.right, 0);
+  const total = Object.values(perContrast).reduce((a, s) => a + s.total, 0);
+  $("final-score").textContent = "Score " + score + " — " + right + "/" + total + " correct";
+  $("final-streak").textContent = "Best streak: " + bestStreak;
+  const table = $("results-table");
+  table.innerHTML = "<tr><th>Sound contrast</th><th>Accuracy</th></tr>";
+  let worst = null;
+  for (const s of Object.values(perContrast)) {
+    if (!s.total) continue;
+    const pct = Math.round(s.right / s.total * 100);
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td></td><td></td>";
+    tr.children[0].textContent = s.label;
+    tr.children[1].textContent = s.right + "/" + s.total + " (" + pct + "%)";
+    table.appendChild(tr);
+    if (!worst || pct < worst.pct) worst = { label: s.label, pct };
+  }
+  $("advice").textContent = worst && worst.pct < 100
+    ? "Practice target: " + worst.label
+    : "Perfect ear — try a faster voice!";
+  $("copy-btn").onclick = () => {
+    const text = "Sound Sprint — " + right + "/" + total + " (best streak " + bestStreak + ")";
+    navigator.clipboard.writeText(text).then(() => { $("copy-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+/* ---- init ---- */
+$("start-btn").onclick = startSprint;
+$("again-btn").onclick = startSprint;
+$("speaker-btn").onclick = () => { const r = rounds[current]; if (r) speak(r.pair[r.targetIdx]); };
+$("slow-btn").onclick = () => { const r = rounds[current]; if (r) speak(r.pair[r.targetIdx], 0.55); };
+$("choice-0").onclick = () => answer(0);
+$("choice-1").onclick = () => answer(1);
+if ("speechSynthesis" in window) {
+  populateVoices();
+  speechSynthesis.addEventListener("voiceschanged", populateVoices);
+} else {
+  $("tts-warn").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
