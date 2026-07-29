@@ -10,7 +10,7 @@ them for English learners.
 |------|----------|
 | `research/game-dynamics.md` | The main catalog: why Contexto works, 12 adaptable game dynamics, ESL design principles, and engagement meta-mechanics |
 | `research/prototype-shortlist.md` | Ranked build candidates with effort estimates and tech notes |
-| `prototypes/` | Playable prototypes (to come) |
+| `prototypes/connections/` | **ESL Connections** — playable prototype; open `index.html` in a browser. Connections-style grid where groups encode collocations, phrasal verbs, spelling and register, with a mini-lesson per solved group |
 
 ## Starting point
 

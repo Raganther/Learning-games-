@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESL Connections</title>
+<style>
+  :root {
+    --bg: #fafaf8;
+    --text: #121212;
+    --tile-bg: #efefe6;
+    --tile-text: #121212;
+    --tile-selected-bg: #5a594e;
+    --tile-selected-text: #ffffff;
+    --muted: #6b6b6b;
+    --border: #d4d4cc;
+    --g0: #f9df6d; /* yellow — easiest */
+    --g1: #a0c35a; /* green */
+    --g2: #b0c4ef; /* blue */
+    --g3: #ba81c5; /* purple — hardest */
+    --btn-bg: #ffffff;
+    --btn-border: #121212;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a; --text: #ececec;
+      --tile-bg: #2b2b30; --tile-text: #ececec;
+      --tile-selected-bg: #d6d6cc; --tile-selected-text: #17171a;
+      --muted: #9a9aa2; --border: #3a3a40;
+      --btn-bg: #232327; --btn-border: #ececec;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #fafaf8; --text: #121212;
+    --tile-bg: #efefe6; --tile-text: #121212;
+    --tile-selected-bg: #5a594e; --tile-selected-text: #ffffff;
+    --muted: #6b6b6b; --border: #d4d4cc;
+    --btn-bg: #ffffff; --btn-border: #121212;
+  }
+  :root[data-theme="dark"] {
+    --bg: #17171a; --text: #ececec;
+    --tile-bg: #2b2b30; --tile-text: #ececec;
+    --tile-selected-bg: #d6d6cc; --tile-selected-text: #17171a;
+    --muted: #9a9aa2; --border: #3a3a40;
+    --btn-bg: #232327; --btn-border: #ececec;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 560px; padding: 16px; }
+  html.projector .app { max-width: 900px; }
+
+  header { text-align: center; margin-bottom: 4px; }
+  h1 { font-size: 1.5rem; margin: 8px 0 2px; letter-spacing: 0.02em; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 10px; }
+  html.projector h1 { font-size: 2.4rem; }
+  html.projector .subtitle { font-size: 1.3rem; }
+
+  .toolbar {
+    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 14px; align-items: center;
+  }
+  select, .toolbar button {
+    font: inherit; font-size: 0.85rem; padding: 6px 12px;
+    border-radius: 999px; border: 1px solid var(--border);
+    background: var(--btn-bg); color: var(--text); cursor: pointer;
+  }
+
+  .instructions { text-align: center; color: var(--muted); font-size: 0.95rem; margin: 0 0 12px; }
+  html.projector .instructions { font-size: 1.4rem; }
+
+  .solved-area { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .solved-group {
+    border-radius: 10px; padding: 10px 14px; text-align: center; color: #121212;
+    animation: pop 0.35s ease;
+  }
+  @keyframes pop { 0% { transform: scale(0.92); opacity: 0.3; } 100% { transform: scale(1); opacity: 1; } }
+  .solved-group .gname { font-weight: 800; text-transform: uppercase; font-size: 0.95rem; letter-spacing: 0.03em; }
+  .solved-group .gwords { font-size: 0.95rem; margin-top: 2px; }
+  .solved-group .gnote {
+    font-size: 0.85rem; margin-top: 6px; padding-top: 6px;
+    border-top: 1px solid rgba(0,0,0,0.18); font-style: italic;
+  }
+  html.projector .solved-group .gname { font-size: 1.5rem; }
+  html.projector .solved-group .gwords { font-size: 1.4rem; }
+  html.projector .solved-group .gnote { font-size: 1.25rem; }
+  .diff-0 { background: var(--g0); } .diff-1 { background: var(--g1); }
+  .diff-2 { background: var(--g2); } .diff-3 { background: var(--g3); }
+  .revealed { opacity: 0.85; outline: 2px dashed rgba(0,0,0,0.3); }
+
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .tile {
+    border: none; border-radius: 10px; background: var(--tile-bg); color: var(--tile-text);
+    font-weight: 700; text-transform: uppercase; font-size: 0.82rem; letter-spacing: 0.01em;
+    padding: 0 4px; height: 64px; cursor: pointer; font-family: inherit;
+    transition: transform 0.08s ease;
+    overflow-wrap: anywhere;
+  }
+  .tile:active { transform: scale(0.95); }
+  .tile.selected { background: var(--tile-selected-bg); color: var(--tile-selected-text); }
+  .tile.shake { animation: shake 0.35s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); } 75% { transform: translateX(5px); }
+  }
+  html.projector .tile { height: 96px; font-size: 1.5rem; }
+
+  .status {
+    display: flex; justify-content: center; align-items: center; gap: 8px;
+    margin: 14px 0 4px; font-size: 0.95rem;
+  }
+  html.projector .status { font-size: 1.4rem; }
+  .dots { display: inline-flex; gap: 5px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tile-selected-bg); display: inline-block; }
+  .dot.spent { background: transparent; border: 1.5px solid var(--border); }
+  html.projector .dot { width: 18px; height: 18px; }
+
+  .message { text-align: center; min-height: 1.4em; font-weight: 600; margin: 6px 0; }
+  html.projector .message { font-size: 1.5rem; }
+
+  .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .controls button {
+    font: inherit; font-weight: 600; font-size: 0.95rem;
+    padding: 12px 22px; border-radius: 999px; cursor: pointer;
+    background: var(--btn-bg); color: var(--text); border: 1px solid var(--btn-border);
+  }
+  .controls button.primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .controls button:disabled { opacity: 0.35; cursor: default; }
+  html.projector .controls button { font-size: 1.3rem; padding: 14px 30px; }
+
+  .share-box { text-align: center; margin-top: 12px; }
+  .share-box pre {
+    display: inline-block; text-align: left; background: var(--tile-bg);
+    padding: 10px 16px; border-radius: 10px; font-size: 1rem; line-height: 1.3;
+  }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 24px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>ESL Connections</h1>
+    <p class="subtitle">Find four groups of four connected words</p>
+  </header>
+
+  <div class="toolbar">
+    <select id="puzzle-select" aria-label="Choose puzzle"></select>
+    <button id="projector-btn" title="Bigger text for the classroom">Projector mode</button>
+  </div>
+
+  <p class="instructions">Groups share a language pattern — collocations, phrasal verbs, spelling, grammar. Solve a group to unlock its mini-lesson.</p>
+
+  <div class="solved-area" id="solved-area"></div>
+  <div class="grid" id="grid"></div>
+
+  <div class="status">
+    <span>Mistakes remaining:</span>
+    <span class="dots" id="dots"></span>
+  </div>
+  <div class="message" id="message"></div>
+
+  <div class="controls">
+    <button id="shuffle-btn">Shuffle</button>
+    <button id="deselect-btn">Deselect</button>
+    <button id="submit-btn" class="primary" disabled>Submit</button>
+  </div>
+
+  <div class="share-box" id="share-box"></div>
+
+  <footer>Learning Games — prototype 1 · puzzles are editable in this file</footer>
+</div>
+
+<script>
+/* ================= PUZZLES — edit or add puzzles here =================
+   Each puzzle: title, level, groups[4].
+   Groups are listed easiest (0, yellow) to hardest (3, purple).
+   Every group: name (shown when solved), words[4], note (the mini-lesson).
+   All 16 words in a puzzle must be different. */
+const PUZZLES = [
+  {
+    title: "Collocations: make, do, take, have",
+    level: "B1",
+    groups: [
+      { name: "MAKE a/some ___", words: ["decision", "mistake", "noise", "progress"],
+        note: "We MAKE decisions, mistakes, noise and progress. “Do a mistake” is a classic error — it's always “make a mistake”." },
+      { name: "DO the/your ___", words: ["homework", "laundry", "dishes", "exercise"],
+        note: "DO goes with work and chores: do your homework, do the laundry, do the dishes, do exercise." },
+      { name: "TAKE a ___", words: ["break", "photo", "risk", "nap"],
+        note: "TAKE a break, take a photo, take a risk, take a nap. In British English you can also “have a break” — that was the trap!" },
+      { name: "HAVE (a) ___", words: ["fun", "breakfast", "headache", "party"],
+        note: "HAVE goes with meals, experiences and states: have fun, have breakfast, have a headache, have a party." }
+    ]
+  },
+  {
+    title: "Phrasal verbs: which particle?",
+    level: "B1–B2",
+    groups: [
+      { name: "___ + UP", words: ["grow", "wake", "hurry", "dress"],
+        note: "Grow up (become an adult), wake up, hurry up, dress up (wear special clothes)." },
+      { name: "___ + OUT", words: ["find", "figure", "hang", "work"],
+        note: "Find out = discover. Figure out = solve/understand. Hang out = spend time. Work out = exercise, or find a solution." },
+      { name: "___ + OFF", words: ["take", "turn", "show", "set"],
+        note: "Take off (a plane leaves the ground; remove clothes), turn off, show off (= boast), set off (= start a journey)." },
+      { name: "___ + ON", words: ["try", "put", "rely", "insist"],
+        note: "Try on and put on for clothes. Rely on and insist on always need ON — they are verb + preposition pairs. (Yes, “put off” and “put out” exist too — that was the trap.)" }
+    ]
+  },
+  {
+    title: "Irregular past tense patterns",
+    level: "A2–B1",
+    groups: [
+      { name: "Past is the same word", words: ["cut", "put", "cost", "hit"],
+        note: "These never change: Yesterday I cut, I put, it cost, she hit. No -ed, no new form." },
+      { name: "Past ends in -OUGHT / -AUGHT", words: ["buy", "think", "catch", "teach"],
+        note: "Buy → bought, think → thought, catch → caught, teach → taught. Same sound, two spellings." },
+      { name: "I changes to A", words: ["begin", "drink", "sing", "swim"],
+        note: "Begin → began, drink → drank, sing → sang, swim → swam. (And the third form uses U: begun, drunk, sung, swum.)" },
+      { name: "Past ends in -EW", words: ["grow", "know", "fly", "throw"],
+        note: "Grow → grew, know → knew, fly → flew, throw → threw." }
+    ]
+  },
+  {
+    title: "Silent letters",
+    level: "B1",
+    groups: [
+      { name: "Silent K", words: ["knee", "knife", "know", "knock"],
+        note: "KN- at the start of a word: the K is always silent. Say /n/: knee, knife, know, knock." },
+      { name: "Silent L", words: ["half", "walk", "talk", "calm"],
+        note: "The L disappears: half /hɑːf/, walk /wɔːk/, talk /tɔːk/, calm /kɑːm/." },
+      { name: "Silent B", words: ["climb", "thumb", "comb", "doubt"],
+        note: "B is silent after M at the end (climb, thumb, comb) and in doubt /daʊt/." },
+      { name: "Silent H", words: ["hour", "honest", "ghost", "heir"],
+        note: "Hour and honest start with a vowel sound — so it's “an hour”, “an honest person”. Ghost and heir hide their H too." }
+    ]
+  },
+  {
+    title: "Formal or informal?",
+    level: "B2",
+    groups: [
+      { name: "Informal words for people", words: ["guy", "kid", "mate", "folks"],
+        note: "Casual conversation only: guy = man, kid = child, mate = friend (British), folks = people/parents." },
+      { name: "Formal verbs", words: ["purchase", "assist", "depart", "require"],
+        note: "The formal versions of buy, help, leave and need. Use them in writing and announcements — not with friends." },
+      { name: "Formal linking adverbs", words: ["furthermore", "nevertheless", "therefore", "consequently"],
+        note: "Essay connectors: furthermore adds, nevertheless contrasts, therefore and consequently give results." },
+      { name: "Spoken discourse markers", words: ["anyway", "well", "actually", "right"],
+        note: "The small words that organise real conversation: “Well…”, “Anyway…”, “Actually…”, “Right, let's start.”" }
+    ]
+  }
+];
+/* ================= end of puzzles ================= */
+
+const MAX_MISTAKES = 4;
+const EMOJI = ["\u{1F7E8}", "\u{1F7E9}", "\u{1F7E6}", "\u{1F7EA}"];
+
+let puzzleIndex = 0;
+let wordToGroup = {};   // word -> difficulty index
+let remaining = [];     // words still on the grid
+let selected = [];
+let solvedGroups = [];  // difficulty indexes in solve order
+let mistakes = 0;
+let guessHistory = [];  // array of arrays of difficulty indexes
+let pastGuesses = [];   // serialized guesses, to catch repeats
+let gameOver = false;
+
+const $ = (id) => document.getElementById(id);
+
+function dailyIndex() {
+  const days = Math.floor(Date.now() / 86400000);
+  return days % PUZZLES.length;
+}
+
+function loadPuzzle(i) {
+  puzzleIndex = i;
+  const p = PUZZLES[i];
+  wordToGroup = {};
+  p.groups.forEach((g, d) => g.words.forEach(w => { wordToGroup[w] = d; }));
+  remaining = shuffle(p.groups.flatMap(g => g.words));
+  selected = [];
+  solvedGroups = [];
+  mistakes = 0;
+  guessHistory = [];
+  pastGuesses = [];
+  gameOver = false;
+  $("share-box").innerHTML = "";
+  setMessage("");
+  render();
+}
+
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function render() {
+  const p = PUZZLES[puzzleIndex];
+
+  const solvedArea = $("solved-area");
+  solvedArea.innerHTML = "";
+  for (const d of solvedGroups) {
+    const g = p.groups[d];
+    const div = document.createElement("div");
+    div.className = "solved-group diff-" + d + (gameOver === "lost" && !guessedCorrectly(d) ? " revealed" : "");
+    div.innerHTML = '<div class="gname"></div><div class="gwords"></div><div class="gnote"></div>';
+    div.querySelector(".gname").textContent = g.name;
+    div.querySelector(".gwords").textContent = g.words.join(", ");
+    div.querySelector(".gnote").textContent = g.note;
+    solvedArea.appendChild(div);
+  }
+
+  const grid = $("grid");
+  grid.innerHTML = "";
+  for (const w of remaining) {
+    const btn = document.createElement("button");
+    btn.className = "tile" + (selected.includes(w) ? " selected" : "");
+    btn.textContent = w;
+    btn.onclick = () => toggle(w);
+    grid.appendChild(btn);
+  }
+
+  const dots = $("dots");
+  dots.innerHTML = "";
+  for (let i = 0; i < MAX_MISTAKES; i++) {
+    const s = document.createElement("span");
+    s.className = "dot" + (i < mistakes ? " spent" : "");
+    dots.appendChild(s);
+  }
+
+  $("submit-btn").disabled = selected.length !== 4 || !!gameOver;
+}
+
+function guessedCorrectly(d) {
+  return guessHistory.some(g => g.every(x => x === d));
+}
+
+function toggle(w) {
+  if (gameOver) return;
+  if (selected.includes(w)) selected = selected.filter(x => x !== w);
+  else if (selected.length < 4) selected.push(w);
+  render();
+}
+
+function setMessage(text) { $("message").textContent = text; }
+
+function submitGuess() {
+  if (selected.length !== 4 || gameOver) return;
+  const key = selected.slice().sort().join("|");
+  if (pastGuesses.includes(key)) { setMessage("Already guessed!"); return; }
+  pastGuesses.push(key);
+
+  const diffs = selected.map(w => wordToGroup[w]);
+  guessHistory.push(diffs.slice());
+
+  const counts = {};
+  diffs.forEach(d => { counts[d] = (counts[d] || 0) + 1; });
+  const best = Math.max(...Object.values(counts));
+
+  if (best === 4) {
+    const d = diffs[0];
+    solvedGroups.push(d);
+    remaining = remaining.filter(w => wordToGroup[w] !== d);
+    selected = [];
+    if (solvedGroups.length === 4) {
+      gameOver = "won";
+      setMessage(mistakes === 0 ? "Perfect! \u{1F389}" : "Solved it! \u{1F389}");
+      showShare();
+    } else {
+      setMessage("Correct!");
+    }
+  } else {
+    mistakes++;
+    document.querySelectorAll(".tile.selected").forEach(t => t.classList.add("shake"));
+    setMessage(best === 3 ? "One away…" : "Not a group.");
+    if (mistakes >= MAX_MISTAKES) {
+      gameOver = "lost";
+      const p = PUZZLES[puzzleIndex];
+      for (let d = 0; d < 4; d++) if (!solvedGroups.includes(d)) solvedGroups.push(d);
+      remaining = [];
+      selected = [];
+      setMessage("Out of guesses — here are the groups. Read the notes!");
+      showShare();
+    }
+  }
+  setTimeout(render, best === 4 ? 0 : 380);
+}
+
+function showShare() {
+  const p = PUZZLES[puzzleIndex];
+  const rows = guessHistory.map(g => g.map(d => EMOJI[d]).join("")).join("\n");
+  const outcome = gameOver === "won" ? (guessHistory.length + " guesses") : "X/4";
+  const text = "ESL Connections — " + p.title + " (" + p.level + ")\n" + outcome + "\n" + rows;
+  const box = $("share-box");
+  box.innerHTML = "";
+  const pre = document.createElement("pre");
+  pre.textContent = rows;
+  const btn = document.createElement("button");
+  btn.textContent = "Copy result";
+  btn.style.cssText = "font:inherit;font-weight:600;padding:10px 20px;border-radius:999px;cursor:pointer;margin-top:8px;display:block;margin-left:auto;margin-right:auto;background:var(--btn-bg);color:var(--text);border:1px solid var(--btn-border);";
+  btn.onclick = () => {
+    navigator.clipboard.writeText(text).then(
+      () => { btn.textContent = "Copied!"; },
+      () => { btn.textContent = "Copy failed — select the text above"; }
+    );
+  };
+  box.appendChild(pre);
+  box.appendChild(btn);
+}
+
+/* ---- toolbar ---- */
+function initToolbar() {
+  const sel = $("puzzle-select");
+  PUZZLES.forEach((p, i) => {
+    const o = document.createElement("option");
+    o.value = i;
+    o.textContent = (i + 1) + ". " + p.title + " (" + p.level + ")";
+    sel.appendChild(o);
+  });
+  sel.value = puzzleIndex;
+  sel.onchange = () => loadPuzzle(Number(sel.value));
+
+  $("projector-btn").onclick = () => {
+    document.documentElement.classList.toggle("projector");
+  };
+  $("shuffle-btn").onclick = () => { remaining = shuffle(remaining); render(); };
+  $("deselect-btn").onclick = () => { selected = []; render(); };
+  $("submit-btn").onclick = submitGuess;
+}
+
+const params = new URLSearchParams(location.search);
+const start = params.has("p") ? (Number(params.get("p")) - 1) : dailyIndex();
+initToolbar();
+loadPuzzle(Math.min(Math.max(start, 0), PUZZLES.length - 1));
+$("puzzle-select").value = puzzleIndex;
+</script>
+</body>
+</html>
