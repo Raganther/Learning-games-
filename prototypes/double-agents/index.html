@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Double Agents</title>
+<style>
+  :root {
+    --bg: #f1efe9; --text: #24231f; --muted: #85806f;
+    --folder: #e8dbb8; --folder-dark: #d9c68e; --paper: #fffdf6;
+    --border: #ddd6c2; --red: #b3372e; --accent: #b3372e; --good: #2c7a45; --gold: #a8842c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171612; --text: #eae6db; --muted: #98917d;
+      --folder: #3d3520; --folder-dark: #4d4429; --paper: #23211a;
+      --border: #3c382b; --red: #e05a4b; --accent: #e05a4b; --good: #4fb377; --gold: #d4ad4e;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f1efe9; --text: #24231f; --muted: #85806f;
+    --folder: #e8dbb8; --folder-dark: #d9c68e; --paper: #fffdf6;
+    --border: #ddd6c2; --red: #b3372e; --accent: #b3372e; --good: #2c7a45; --gold: #a8842c;
+  }
+  :root[data-theme="dark"] {
+    --bg: #171612; --text: #eae6db; --muted: #98917d;
+    --folder: #3d3520; --folder-dark: #4d4429; --paper: #23211a;
+    --border: #3c382b; --red: #e05a4b; --accent: #e05a4b; --good: #4fb377; --gold: #d4ad4e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 520px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; letter-spacing: 0.03em; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .hud { display: flex; justify-content: space-between; font-weight: 800; margin-bottom: 10px; font-variant-numeric: tabular-nums; }
+  .hud .pts { color: var(--gold); }
+  .folder {
+    background: var(--folder); border: 1px solid var(--folder-dark); border-radius: 12px 12px 10px 10px;
+    padding: 14px 14px 16px; margin-bottom: 12px; position: relative;
+  }
+  .folder::before {
+    content: ""; position: absolute; top: -10px; left: 18px; width: 110px; height: 12px;
+    background: var(--folder); border: 1px solid var(--folder-dark); border-bottom: none;
+    border-radius: 8px 8px 0 0;
+  }
+  .classified {
+    position: absolute; top: 8px; right: 12px; transform: rotate(6deg);
+    border: 2px solid var(--red); color: var(--red); border-radius: 4px;
+    padding: 1px 8px; font-weight: 800; font-size: 0.72rem; letter-spacing: 0.18em; opacity: 0.85;
+  }
+  .dossier {
+    background: var(--paper); border: 1px solid var(--border); border-radius: 8px;
+    padding: 16px 16px 14px; text-align: left;
+  }
+  .dossier .head { font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .identity { display: flex; gap: 10px; margin-bottom: 10px; align-items: baseline; }
+  .identity .badge {
+    flex-shrink: 0; font-weight: 800; font-size: 0.75rem; color: var(--accent);
+    border: 1.5px solid var(--accent); border-radius: 999px; padding: 2px 9px; letter-spacing: 0.05em;
+  }
+  .identity .txt { line-height: 1.45; }
+  .guess-row { display: flex; gap: 8px; margin-top: 4px; }
+  #guess-input {
+    flex: 1; font: inherit; font-size: 1rem; padding: 11px 14px;
+    border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  }
+  #guess-input:focus { outline: 2px solid var(--accent); }
+  .guess-row button {
+    font: inherit; font-weight: 800; padding: 11px 20px; border-radius: 10px;
+    border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .aux { margin-top: 10px; }
+  .aux button {
+    font: inherit; font-size: 0.85rem; padding: 6px 14px; margin: 0 4px;
+    border-radius: 999px; border: 1px solid var(--border); background: var(--paper);
+    color: var(--muted); cursor: pointer;
+  }
+  .feedback { min-height: 1.5em; font-weight: 800; margin-top: 10px; }
+  .feedback.good { color: var(--good); }
+  .feedback.miss { color: var(--accent); }
+  .reveal-card {
+    background: var(--paper); border: 1px solid var(--good); border-radius: 10px;
+    padding: 14px 16px; text-align: left; margin-bottom: 12px;
+  }
+  .reveal-card .agent { font-weight: 800; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .reveal-card .ex { margin: 6px 0 0; line-height: 1.5; font-size: 0.95rem; }
+  .reveal-card .ex em { color: var(--accent); font-style: normal; font-weight: 700; }
+  .primary {
+    font: inherit; font-weight: 800; font-size: 1rem; padding: 12px 30px;
+    border-radius: 999px; border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .endbox h2 { margin: 4px 0; }
+  .endbox .score { font-size: 2rem; font-weight: 800; color: var(--gold); }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>&#128373;&#65039; Double Agents</h1>
+  <p class="subtitle">One word. Two identities. Read both files and name the agent.</p>
+
+  <div class="hud">
+    <span id="progress">1/10</span>
+    <span class="pts" id="points">0 pts</span>
+  </div>
+
+  <div class="folder" id="play-card">
+    <span class="classified">Classified</span>
+    <div class="dossier">
+      <div class="head">Agent dossier — two known identities</div>
+      <div class="identity"><span class="badge">ID 1</span><span class="txt" id="def1"></span></div>
+      <div class="identity"><span class="badge">ID 2</span><span class="txt" id="def2"></span></div>
+      <div class="guess-row">
+        <input id="guess-input" type="text" autocomplete="off" placeholder="The agent's name (one word)…">
+        <button id="guess-btn">Unmask</button>
+      </div>
+      <div class="aux">
+        <button id="hint-btn">Hint (−1 pt)</button>
+        <button id="reveal-btn">Open the file</button>
+      </div>
+      <div class="feedback" id="feedback"></div>
+    </div>
+  </div>
+
+  <div class="reveal-card hidden" id="reveal-card">
+    <div class="agent" id="r-agent"></div>
+    <div class="ex" id="r-ex1"></div>
+    <div class="ex" id="r-ex2"></div>
+    <p style="text-align:center;margin:12px 0 0"><button class="primary" id="next-btn">Next dossier</button></p>
+  </div>
+
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 15 · dossiers are editable in this file</footer>
+</div>
+
+<script>
+/* ============ AGENTS — edit or add here ============
+   word:  the answer
+   d1/d2: the two definitions (two meanings of the same word)
+   e1/e2: example sentences, one per identity */
+const AGENTS = [
+  { word: "bank", d1: "the place that keeps your money safe", d2: "the ground along the side of a river",
+    e1: "I need to go to the <em>bank</em> before it closes.", e2: "We had a picnic on the river <em>bank</em>." },
+  { word: "bat", d1: "the flying animal that sleeps upside down", d2: "the wooden stick you hit a ball with",
+    e1: "A <em>bat</em> flew out of the cave at sunset.", e2: "He swung the <em>bat</em> and missed completely." },
+  { word: "ring", d1: "the jewellery you wear on a finger", d2: "the sound a phone or bell makes",
+    e1: "He proposed with his grandmother's <em>ring</em>.", e2: "Did you hear the doorbell <em>ring</em>?" },
+  { word: "light", d1: "the opposite of heavy", d2: "what a lamp gives you in the dark",
+    e1: "This suitcase is really <em>light</em> — did you pack anything?", e2: "Turn on the <em>light</em>, I can't see." },
+  { word: "park", d1: "a green place with grass and trees in a town", d2: "to leave your car somewhere",
+    e1: "The kids are playing in the <em>park</em>.", e2: "You can't <em>park</em> here — look at the sign." },
+  { word: "match", d1: "the little stick that makes fire", d2: "a game between two teams",
+    e1: "He lit the candle with a <em>match</em>.", e2: "The <em>match</em> finished two–two." },
+  { word: "spring", d1: "the season after winter", d2: "the metal coil that bounces back",
+    e1: "The garden is beautiful in <em>spring</em>.", e2: "There's a broken <em>spring</em> in this old sofa." },
+  { word: "wave", d1: "the moving water you surf on", d2: "to move your hand to say hello or goodbye",
+    e1: "A huge <em>wave</em> knocked me over.", e2: "She turned to <em>wave</em> goodbye from the train." },
+  { word: "letter", d1: "one of the symbols A, B, C…", d2: "a written message you send by post",
+    e1: "“W” is the only <em>letter</em> with three syllables.", e2: "My grandmother still writes me a <em>letter</em> every month." },
+  { word: "watch", d1: "the small clock you wear on your wrist", d2: "to look at something for some time, like TV",
+    e1: "My <em>watch</em> says half past nine.", e2: "Let's <em>watch</em> a film tonight." }
+];
+/* ============ end of agents ============ */
+
+let order = [], current = 0, points = 0, hintsUsed = 0, roundOver = false;
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function startGame() {
+  order = shuffle(AGENTS);
+  current = 0; points = 0;
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("play-card").classList.remove("hidden");
+  document.querySelector(".hud").classList.remove("hidden");
+  showRound();
+}
+
+function showRound() {
+  const a = order[current];
+  hintsUsed = 0; roundOver = false;
+  $("progress").textContent = (current + 1) + "/" + order.length;
+  $("points").textContent = points + " pts";
+  $("def1").textContent = a.d1;
+  $("def2").textContent = a.d2;
+  $("feedback").textContent = "";
+  $("feedback").className = "feedback";
+  $("guess-input").value = "";
+  $("guess-input").disabled = false;
+  $("guess-btn").disabled = false;
+  $("hint-btn").disabled = false;
+  $("reveal-card").classList.add("hidden");
+  $("play-card").classList.remove("hidden");
+  $("guess-input").focus();
+}
+
+function submitGuess() {
+  if (roundOver) return;
+  const raw = $("guess-input").value.trim().toLowerCase();
+  if (!raw) return;
+  const a = order[current];
+  if (raw === a.word || raw === a.word + "s" || raw === a.word + "es") {
+    const earned = Math.max(3 - hintsUsed, 1);
+    points += earned;
+    finishRound(true, earned);
+  } else {
+    $("feedback").textContent = "Not this agent. Reread both identities…";
+    $("feedback").className = "feedback miss";
+    $("guess-input").select();
+  }
+}
+
+function giveHint() {
+  const a = order[current];
+  hintsUsed++;
+  if (hintsUsed === 1) {
+    $("feedback").textContent = "The agent's name starts with “" + a.word[0].toUpperCase() + "” (" + a.word.length + " letters).";
+    $("feedback").className = "feedback";
+  } else {
+    $("feedback").textContent = "“" + a.word[0].toUpperCase() + a.word[1] + "…” — " + a.word.length + " letters.";
+    $("hint-btn").disabled = true;
+  }
+}
+
+function finishRound(won, earned) {
+  roundOver = true;
+  const a = order[current];
+  $("guess-input").disabled = true;
+  $("guess-btn").disabled = true;
+  $("hint-btn").disabled = true;
+  if (won) {
+    $("feedback").textContent = "Agent unmasked! +" + earned + " point" + (earned > 1 ? "s" : "");
+    $("feedback").className = "feedback good";
+  } else {
+    $("feedback").textContent = "";
+  }
+  $("points").textContent = points + " pts";
+  $("r-agent").textContent = "\u{1F575}\u{FE0F} " + a.word;
+  $("r-ex1").innerHTML = "1. " + a.e1;
+  $("r-ex2").innerHTML = "2. " + a.e2;
+  $("next-btn").textContent = current + 1 >= order.length ? "See results" : "Next dossier";
+  $("reveal-card").classList.remove("hidden");
+}
+
+function next() {
+  current++;
+  if (current >= order.length) { endGame(); return; }
+  showRound();
+}
+
+function endGame() {
+  $("play-card").classList.add("hidden");
+  $("reveal-card").classList.add("hidden");
+  document.querySelector(".hud").classList.add("hidden");
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  const max = order.length * 3;
+  const pct = points / max;
+  let rating;
+  if (pct >= 0.9) rating = "Spymaster — no double life escapes you.";
+  else if (pct >= 0.6) rating = "Field agent — sharp instincts for hidden meanings.";
+  else if (pct >= 0.3) rating = "Analyst in training — every unmasked word is now yours.";
+  else rating = "Ten double agents identified for future reference. The agency thanks you.";
+  box.innerHTML = "<h2>Mission complete</h2>" +
+    "<p class='score'>" + points + "/" + max + "</p>" +
+    "<p></p>" +
+    "<p><button class='primary' id='again-btn'>New mission</button> " +
+    "<button class='primary' id='share-btn' style='background:var(--paper);color:var(--text);border:1px solid var(--border)'>Copy result</button></p>";
+  box.querySelectorAll("p")[1].textContent = rating;
+  $("again-btn").onclick = startGame;
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Double Agents — " + points + "/" + max + " points \u{1F575}\u{FE0F}").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+}
+
+$("guess-btn").onclick = submitGuess;
+$("guess-input").addEventListener("keydown", e => { if (e.key === "Enter") submitGuess(); });
+$("hint-btn").onclick = giveHint;
+$("reveal-btn").onclick = () => { if (!roundOver) finishRound(false, 0); };
+$("next-btn").onclick = next;
+startGame();
+</script>
+</body>
+</html>

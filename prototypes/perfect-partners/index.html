@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfect Partners</title>
+<style>
+  :root {
+    --bg: #faf4f2; --text: #2b2123; --muted: #96827f;
+    --card-back: #c2554f; --card-back2: #a8433e; --card-face: #ffffff;
+    --border: #e8d8d4; --accent: #c2554f; --good: #2c7a45; --gold: #b08a2e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1516; --text: #efe5e3; --muted: #a18d8a;
+      --card-back: #a8433e; --card-back2: #8a352f; --card-face: #292022;
+      --border: #443537; --accent: #e07a70; --good: #4fb377; --gold: #d4ad4e;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #faf4f2; --text: #2b2123; --muted: #96827f;
+    --card-back: #c2554f; --card-back2: #a8433e; --card-face: #ffffff;
+    --border: #e8d8d4; --accent: #c2554f; --good: #2c7a45; --gold: #b08a2e;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1b1516; --text: #efe5e3; --muted: #a18d8a;
+    --card-back: #a8433e; --card-back2: #8a352f; --card-face: #292022;
+    --border: #443537; --accent: #e07a70; --good: #4fb377; --gold: #d4ad4e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 520px; padding: 20px 16px; text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .toolbar { display: flex; justify-content: center; gap: 10px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  select {
+    font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card-face); color: var(--text); cursor: pointer;
+  }
+  .turns { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 12px; }
+  .cardb {
+    height: 74px; border-radius: 12px; border: none; cursor: pointer;
+    font: inherit; font-weight: 800; font-size: 0.9rem; padding: 4px;
+    overflow-wrap: anywhere; line-height: 1.2;
+    transition: transform 0.15s ease;
+  }
+  .cardb.down {
+    background: linear-gradient(135deg, var(--card-back), var(--card-back2));
+    color: transparent;
+  }
+  .cardb.down::after { content: "\2665"; color: rgba(255,255,255,0.55); font-size: 1.3rem; display: block; }
+  .cardb.up { background: var(--card-face); color: var(--text); border: 2px solid var(--accent); transform: scale(1.03); }
+  .cardb.matched { background: var(--card-face); color: var(--good); border: 2px solid var(--good); cursor: default; opacity: 0.9; }
+  .cardb.shake { animation: shake 0.4s ease; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .toast {
+    min-height: 2.6em; font-size: 0.92rem; line-height: 1.4; margin-bottom: 8px;
+  }
+  .toast .pair { font-weight: 800; color: var(--good); }
+  .toast .why { color: var(--muted); }
+  .endbox {
+    background: var(--card-face); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 18px; text-align: left;
+  }
+  .endbox h2 { margin: 0 0 4px; text-align: center; }
+  .endbox .big { text-align: center; font-weight: 800; font-size: 1.15rem; margin-bottom: 10px; }
+  .endbox li { margin-bottom: 6px; line-height: 1.45; font-size: 0.93rem; }
+  .endbox li strong { color: var(--accent); }
+  .endbox .buttons { text-align: center; margin-top: 10px; }
+  .endbox button {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; margin: 4px;
+  }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>&#10084;&#65039; Perfect Partners</h1>
+  <p class="subtitle">Some words belong together. Flip two cards — if they make a natural pair, they stay.</p>
+
+  <div class="toolbar">
+    <select id="set-select" aria-label="Choose set"></select>
+    <span class="turns" id="turns">0 turns</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div class="toast" id="toast"></div>
+  <div class="endbox hidden" id="endbox"></div>
+
+  <footer>Learning Games — prototype 16 · word pairs are editable in this file</footer>
+</div>
+
+<script>
+/* ============ SETS — edit or add here ============
+   Each set: 8 pairs [left, right, note]. Within one set, every left word
+   must match ONLY its own right word — that's what makes it fair. */
+const SETS = [
+  {
+    title: "Adjective + noun", level: "A2–B1",
+    pairs: [
+      ["heavy", "rain", "heavy rain — never “big rain”. Also: heavy traffic, heavy suitcase."],
+      ["fast", "food", "fast food — but a “quick meal”. Fast and quick are not always twins."],
+      ["strong", "coffee", "strong coffee — never “powerful coffee”. Also: strong accent, strong opinion."],
+      ["loud", "music", "loud music — and its polite enemy: “Could you turn it down?”"],
+      ["hard", "work", "hard work — “It was hard work, but worth it.”"],
+      ["deep", "sleep", "deep sleep — you fall into it. Also: deep breath, deep trouble."],
+      ["bright", "future", "a bright future — bright works for light AND for hope."],
+      ["close", "friend", "a close friend — close = emotionally near. “My closest friend lives abroad.”"]
+    ]
+  },
+  {
+    title: "Verb + noun", level: "B1",
+    pairs: [
+      ["catch", "a cold", "catch a cold — colds are caught, like a ball you didn't want."],
+      ["tell", "the truth", "tell the truth — you tell the truth, a lie, a story, a joke."],
+      ["take", "a photo", "take a photo — never “make a photo”. Cameras take."],
+      ["make", "a wish", "make a wish — blow out the candles first."],
+      ["do", "homework", "do homework — chores and work go with DO."],
+      ["break", "a record", "break a record — records exist to be broken."],
+      ["keep", "a secret", "keep a secret — “Can you keep a secret?” Also: keep a promise."],
+      ["save", "time", "save time — like money: you save it, spend it, waste it, run out of it."]
+    ]
+  }
+];
+/* ============ end of sets ============ */
+
+let setIdx = 0, cards = [], upCards = [], matched = 0, turns = 0, lock = false;
+const $ = (id) => document.getElementById(id);
+
+function shuffle(a) {
+  a = a.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function load(i) {
+  setIdx = i;
+  const s = SETS[i];
+  cards = [];
+  s.pairs.forEach((p, pi) => {
+    cards.push({ text: p[0], pair: pi, matched: false });
+    cards.push({ text: p[1], pair: pi, matched: false });
+  });
+  cards = shuffle(cards);
+  upCards = []; matched = 0; turns = 0; lock = false;
+  $("toast").innerHTML = "";
+  $("endbox").classList.add("hidden");
+  $("endbox").innerHTML = "";
+  $("grid").classList.remove("hidden");
+  render();
+}
+
+function render() {
+  $("turns").textContent = turns + " turn" + (turns === 1 ? "" : "s");
+  const grid = $("grid");
+  grid.innerHTML = "";
+  cards.forEach((c, i) => {
+    const btn = document.createElement("button");
+    const isUp = upCards.includes(i);
+    btn.className = "cardb " + (c.matched ? "matched" : isUp ? "up" : "down");
+    btn.textContent = (c.matched || isUp) ? c.text : "";
+    btn.dataset.i = i;
+    btn.onclick = () => flip(i);
+    grid.appendChild(btn);
+  });
+}
+
+function flip(i) {
+  if (lock || cards[i].matched || upCards.includes(i)) return;
+  upCards.push(i);
+  render();
+  if (upCards.length === 2) {
+    turns++;
+    $("turns").textContent = turns + " turn" + (turns === 1 ? "" : "s");
+    const [a, b] = upCards;
+    if (cards[a].pair === cards[b].pair) {
+      cards[a].matched = cards[b].matched = true;
+      matched++;
+      const p = SETS[setIdx].pairs[cards[a].pair];
+      $("toast").innerHTML = "<span class='pair'>" + p[0] + " + " + p[1] + " \u{2714}</span><br><span class='why'></span>";
+      $("toast").querySelector(".why").textContent = p[2];
+      upCards = [];
+      render();
+      if (matched === SETS[setIdx].pairs.length) setTimeout(finish, 700);
+    } else {
+      lock = true;
+      $("toast").innerHTML = "<span class='why'>Not natural partners — flip again and remember where they live.</span>";
+      document.querySelectorAll(".cardb.up").forEach(el => el.classList.add("shake"));
+      setTimeout(() => { upCards = []; lock = false; render(); }, 950);
+    }
+  }
+}
+
+function finish() {
+  $("grid").classList.add("hidden");
+  $("toast").innerHTML = "";
+  const s = SETS[setIdx];
+  const box = $("endbox");
+  box.classList.remove("hidden");
+  const perfect = s.pairs.length;   // minimum possible turns
+  let rating;
+  if (turns <= perfect + 2) rating = "Almost telepathic — you know where words live.";
+  else if (turns <= perfect + 6) rating = "A well-matched performance!";
+  else rating = "All partners reunited — the collocations are yours now.";
+  box.innerHTML = "<h2>All partners matched!</h2>" +
+    "<div class='big'>" + turns + " turns (perfect = " + perfect + ")</div>" +
+    "<div style='text-align:center;color:var(--muted);margin-bottom:10px'>" + rating + "</div>" +
+    "<ul></ul><div class='buttons'>" +
+    "<button id='share-btn'>Copy result</button>" +
+    "<button id='again-btn'>Shuffle again</button>" +
+    "<button id='next-set-btn'>" + (setIdx + 1 < SETS.length ? "Next set" : "First set") + "</button></div>";
+  const ul = box.querySelector("ul");
+  for (const p of s.pairs) {
+    const li = document.createElement("li");
+    li.innerHTML = "<strong></strong> — ";
+    li.querySelector("strong").textContent = p[0] + " " + p[1];
+    li.appendChild(document.createTextNode(p[2].split(" — ").slice(1).join(" — ")));
+    ul.appendChild(li);
+  }
+  $("share-btn").onclick = () => {
+    navigator.clipboard.writeText("Perfect Partners — “" + s.title + "” matched in " + turns + " turns (perfect: " + perfect + ")").then(
+      () => { $("share-btn").textContent = "Copied!"; }, () => {});
+  };
+  $("again-btn").onclick = () => load(setIdx);
+  $("next-set-btn").onclick = () => { const n = (setIdx + 1) % SETS.length; $("set-select").value = n; load(n); };
+}
+
+/* ---- init ---- */
+const sel = $("set-select");
+SETS.forEach((s, i) => {
+  const o = document.createElement("option");
+  o.value = i;
+  o.textContent = "Set " + (i + 1) + ": " + s.title + " (" + s.level + ")";
+  sel.appendChild(o);
+});
+sel.onchange = () => load(Number(sel.value));
+const params = new URLSearchParams(location.search);
+const start = params.has("p") ? Math.min(Math.max(Number(params.get("p")) - 1, 0), SETS.length - 1) : 0;
+load(start);
+sel.value = start;
+</script>
+</body>
+</html>

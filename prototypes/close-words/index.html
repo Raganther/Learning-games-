@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Close Words</title>
+<style>
+  :root {
+    --bg: #faf8f4; --text: #262220; --muted: #8b8378;
+    --card: #ffffff; --border: #e5ded2;
+    --burn: #d64f2a; --warmc: #d9962b; --coolc: #4a7fc9; --coldc: #9aa2ac;
+    --accent: #d64f2a; --good: #27804a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1815; --text: #ece7df; --muted: #9c9385;
+      --card: #242019; --border: #3c352a;
+      --burn: #f2703f; --warmc: #e8ad4a; --coolc: #7aa5e0; --coldc: #7d8791;
+      --accent: #f2703f; --good: #4fb377;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #faf8f4; --text: #262220; --muted: #8b8378;
+    --card: #ffffff; --border: #e5ded2;
+    --burn: #d64f2a; --warmc: #d9962b; --coolc: #4a7fc9; --coldc: #9aa2ac;
+    --accent: #d64f2a; --good: #27804a;
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a1815; --text: #ece7df; --muted: #9c9385;
+    --card: #242019; --border: #3c352a;
+    --burn: #f2703f; --warmc: #e8ad4a; --coolc: #7aa5e0; --coldc: #7d8791;
+    --accent: #f2703f; --good: #4fb377;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex; justify-content: center; min-height: 100vh;
+  }
+  .app { width: 100%; max-width: 520px; padding: 20px 16px; }
+  header { text-align: center; }
+  h1 { font-size: 1.6rem; margin: 6px 0 2px; }
+  .subtitle { color: var(--muted); font-size: 0.92rem; margin: 0 0 14px; }
+  .toolbar { display: flex; justify-content: center; gap: 8px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+  select, .toolbar button {
+    font: inherit; font-size: 0.85rem; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer;
+  }
+  .status-row {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.9rem; color: var(--muted); margin-bottom: 10px; font-variant-numeric: tabular-nums;
+  }
+  .hint-line { text-align: center; min-height: 1.3em; font-style: italic; color: var(--muted); font-size: 0.92rem; margin-bottom: 8px; }
+  .guess-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  #guess-input {
+    flex: 1; font: inherit; font-size: 1.05rem; padding: 12px 14px;
+    border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--text);
+  }
+  #guess-input:focus { outline: 2px solid var(--accent); }
+  .guess-row button {
+    font: inherit; font-weight: 800; padding: 12px 22px; border-radius: 12px;
+    border: none; background: var(--accent); color: #fff; cursor: pointer;
+  }
+  .feedback { text-align: center; min-height: 1.6em; font-weight: 700; margin-bottom: 8px; }
+  .legend { text-align: center; color: var(--muted); font-size: 0.78rem; margin-bottom: 10px; }
+  .guesses { display: flex; flex-direction: column; gap: 6px; }
+  .g {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1px solid var(--border); border-left-width: 5px;
+    border-radius: 10px; padding: 8px 12px; font-weight: 700; animation: pop 0.25s ease;
+  }
+  @keyframes pop { from { transform: scale(0.97); opacity: 0.4; } to { transform: none; opacity: 1; } }
+  .g .tier { font-size: 0.82rem; font-weight: 600; }
+  .g.t3 { border-left-color: var(--burn); }  .g.t3 .tier { color: var(--burn); }
+  .g.t2 { border-left-color: var(--warmc); } .g.t2 .tier { color: var(--warmc); }
+  .g.t1 { border-left-color: var(--coolc); } .g.t1 .tier { color: var(--coolc); }
+  .g.t0 { border-left-color: var(--coldc); } .g.t0 .tier { color: var(--coldc); }
+  .g.latest { outline: 2px solid var(--accent); }
+  .win-card {
+    background: var(--card); border: 2px solid var(--good); border-radius: 14px;
+    padding: 18px; text-align: center; margin-bottom: 10px;
+  }
+  .win-card .secret { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+  .win-card .def { color: var(--muted); font-style: italic; margin: 6px 0 10px; }
+  .harvest { text-align: left; font-size: 0.92rem; line-height: 1.6; border-top: 1px solid var(--border); padding-top: 10px; }
+  .harvest strong { color: var(--accent); }
+  .win-card button {
+    font: inherit; font-weight: 700; padding: 10px 20px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; margin: 10px 4px 0;
+  }
+  .hidden { display: none; }
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; margin: 20px 0 8px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>&#128293; Close Words</h1>
+    <p class="subtitle">I'm thinking of a word. Every guess tells you how close you are — in <em>meaning</em>.</p>
+  </header>
+
+  <div class="toolbar">
+    <select id="puzzle-select" aria-label="Choose puzzle"></select>
+    <button id="hint-btn" class="hidden">Hint</button>
+    <button id="giveup-btn">Give up</button>
+  </div>
+
+  <div class="status-row">
+    <span id="guess-count">0 guesses</span>
+    <span id="best-so-far"></span>
+  </div>
+  <div class="hint-line" id="hint-line"></div>
+
+  <div id="play-area">
+    <div class="guess-row">
+      <input id="guess-input" type="text" autocomplete="off" placeholder="Guess a word…">
+      <button id="guess-btn">Guess</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="legend">&#128293; burning = very close &nbsp; &#127780;&#65039; warm = same area &nbsp; &#10052;&#65039; cool = same world &nbsp; &#129482; cold = far away</div>
+  </div>
+
+  <div class="win-card hidden" id="win-card"></div>
+  <div class="guesses" id="guesses"></div>
+
+  <footer>Learning Games — prototype 14 · inspired by contexto.me · word maps are editable in this file</footer>
+</div>
+
+<script>
+/* ============ PUZZLES — edit or add here ============
+   secret:  the hidden word (guessing simple forms like plurals also wins)
+   def:     definition, used as the hint and on the win card
+   tiers:   hand-drawn map of the word's neighbourhood.
+            burning = very close, warm = same area, cool = same world.
+            Every other word is "cold". Keep each word in ONE tier only. */
+const PUZZLES = [
+  {
+    secret: "rain", level: "A2", def: "water that falls from the clouds",
+    tiers: {
+      burning: ["storm", "cloud", "wet", "snow", "weather", "umbrella", "shower", "thunder", "drizzle", "downpour", "raincoat", "rainbow", "puddle", "flood", "pour", "drop"],
+      warm: ["water", "wind", "sky", "cold", "winter", "ice", "fog", "mist", "grey", "coat", "boots", "autumn", "season", "sun", "lightning", "forecast"],
+      cool: ["sea", "river", "lake", "ocean", "nature", "tree", "mountain", "garden", "air", "green", "spring", "summer", "outside", "window", "waterfall"]
+    }
+  },
+  {
+    secret: "money", level: "A2–B1", def: "what you earn, save and spend",
+    tiers: {
+      burning: ["cash", "coin", "pay", "bank", "price", "cost", "buy", "spend", "rich", "wallet", "dollar", "euro", "pound", "salary", "save", "expensive", "cheap", "earn"],
+      warm: ["shop", "shopping", "sell", "work", "job", "gold", "poor", "credit", "card", "tax", "business", "market", "budget", "bill", "change", "purse", "debt"],
+      cool: ["number", "count", "paper", "pocket", "bag", "office", "boss", "company", "success", "house", "car", "gift", "value", "economy"]
+    }
+  },
+  {
+    secret: "dream", level: "B1", def: "the story your mind tells while you sleep — or a big hope for the future",
+    tiers: {
+      burning: ["sleep", "night", "nightmare", "wake", "bed", "imagine", "wish", "hope", "asleep", "imagination", "daydream"],
+      warm: ["goal", "future", "fantasy", "mind", "brain", "think", "thought", "memory", "pillow", "rest", "dark", "star", "vision", "sleepy"],
+      cool: ["idea", "plan", "life", "story", "magic", "moon", "quiet", "morning", "eyes", "wonder", "believe", "cloud"]
+    }
+  },
+  {
+    secret: "island", level: "B1", def: "a piece of land with water all around it",
+    tiers: {
+      burning: ["sea", "beach", "ocean", "boat", "ship", "sand", "coast", "shore", "tropical", "palm", "volcano", "paradise", "peninsula"],
+      warm: ["water", "holiday", "travel", "swim", "fish", "wave", "map", "bridge", "land", "desert", "sun", "ferry", "harbour", "bay", "lonely"],
+      cool: ["country", "world", "mountain", "tree", "bird", "summer", "tourist", "hotel", "adventure", "explore", "climate", "coconut"]
+    }
+  }
+];
+/* ============ end of puzzles ============ */
+
+const TIER_INFO = {
+  3: { label: "\u{1F525} burning", fbs: ["Extremely close — you can feel the heat!", "So close! It practically touches the secret word."] },
+  2: { label: "\u{1F324}\u{FE0F} warm", fbs: ["Warm — you're in the right area.", "Getting warm. Stay in this territory."] },
+  1: { label: "\u{2744}\u{FE0F} cool", fbs: ["Cool — same world, but still far.", "A distant relative. Keep circling."] },
+  0: { label: "\u{1F9CA} cold", fbs: ["Cold — a different world entirely.", "Icy. Try a completely different area."] }
+};
+
+let p = null, tierMap = {}, guesses = [], done = false, hintLevel = 0;
+const $ = (id) => document.getElementById(id);
+
+function forms(w) {
+  const out = new Set([w]);
+  for (const suf of ["s", "es", "ed", "d", "ing"]) {
+    if (w.endsWith(suf) && w.length - suf.length > 2) out.add(w.slice(0, -suf.length));
+  }
+  if (w.endsWith("ies")) out.add(w.slice(0, -3) + "y");
+  return out;
+}
+
+function load(i) {
+  p = PUZZLES[i];
+  tierMap = {};
+  p.tiers.burning.forEach(w => tierMap[w] = 3);
+  p.tiers.warm.forEach(w => tierMap[w] = 2);
+  p.tiers.cool.forEach(w => tierMap[w] = 1);
+  guesses = []; done = false; hintLevel = 0;
+  $("win-card").classList.add("hidden");
+  $("win-card").innerHTML = "";
+  $("play-area").classList.remove("hidden");
+  $("hint-btn").classList.add("hidden");
+  $("hint-line").textContent = "Puzzle " + (i + 1) + " (" + p.level + ") — start broad: try areas like nature, people, food, feelings…";
+  $("feedback").textContent = "";
+  $("guess-input").value = "";
+  $("guess-input").disabled = false;
+  render();
+  $("guess-input").focus();
+}
+
+function tierOf(word) {
+  for (const f of forms(word)) if (tierMap[f] !== undefined) return tierMap[f];
+  return 0;
+}
+
+function isSecret(word) {
+  const secretForms = forms(p.secret);
+  for (const f of forms(word)) if (secretForms.has(f)) return true;
+  return false;
+}
+
+function render() {
+  $("guess-count").textContent = guesses.length + " guess" + (guesses.length === 1 ? "" : "es");
+  const best = guesses.reduce((m, g) => Math.max(m, g.tier), -1);
+  $("best-so-far").textContent = best >= 0 ? "best: " + TIER_INFO[best].label : "";
+  const list = $("guesses");
+  list.innerHTML = "";
+  const sorted = guesses.slice().sort((a, b) => b.tier - a.tier || a.word.localeCompare(b.word));
+  const latest = guesses[guesses.length - 1];
+  for (const g of sorted) {
+    const div = document.createElement("div");
+    div.className = "g t" + g.tier + (latest && g.word === latest.word ? " latest" : "");
+    div.innerHTML = "<span></span><span class='tier'></span>";
+    div.children[0].textContent = g.word;
+    div.children[1].textContent = TIER_INFO[g.tier].label;
+    list.appendChild(div);
+  }
+  if (guesses.length >= 6 && !done) {
+    $("hint-btn").classList.remove("hidden");
+    $("hint-btn").textContent = hintLevel === 0 ? "Hint: definition" : "Hint: first letter";
+    if (hintLevel >= 2) $("hint-btn").classList.add("hidden");
+  }
+}
+
+function submitGuess() {
+  if (done) return;
+  const raw = $("guess-input").value.trim().toLowerCase();
+  $("guess-input").value = "";
+  if (!raw || !/^[a-z'-]+$/.test(raw)) { $("feedback").textContent = "One word, letters only."; return; }
+  if (guesses.some(g => g.word === raw)) { $("feedback").textContent = "Already tried “" + raw + "”."; return; }
+  if (isSecret(raw)) { win(false); return; }
+  const tier = tierOf(raw);
+  guesses.push({ word: raw, tier });
+  const info = TIER_INFO[tier];
+  $("feedback").textContent = info.label + " — " + info.fbs[guesses.length % info.fbs.length];
+  render();
+  $("guess-input").focus();
+}
+
+function giveHint() {
+  hintLevel++;
+  if (hintLevel === 1) $("hint-line").textContent = "Definition: " + p.def;
+  else $("hint-line").textContent = "Definition: " + p.def + " — starts with “" + p.secret[0].toUpperCase() + "”";
+  guesses.push({ word: hintLevel === 1 ? "(hint: definition)" : "(hint: first letter)", tier: 0 });
+  render();
+}
+
+function win(gaveUp) {
+  done = true;
+  $("play-area").classList.add("hidden");
+  $("hint-btn").classList.add("hidden");
+  $("guess-input").disabled = true;
+  const n = guesses.filter(g => !g.word.startsWith("(hint")).length + (gaveUp ? 0 : 1);
+  const card = $("win-card");
+  card.classList.remove("hidden");
+  card.innerHTML =
+    "<div>" + (gaveUp ? "The word was…" : "You found it in " + n + " guesses! \u{1F389}") + "</div>" +
+    "<div class='secret'></div><div class='def'></div>" +
+    "<div class='harvest'><strong>The neighbourhood of this word</strong> — good ones to learn together:<br></div>";
+  card.querySelector(".secret").textContent = p.secret;
+  card.querySelector(".def").textContent = p.def;
+  card.querySelector(".harvest").appendChild(document.createTextNode(p.tiers.burning.join(", ")));
+  if (!gaveUp) {
+    const share = document.createElement("button");
+    share.textContent = "Copy result";
+    const idx = PUZZLES.indexOf(p) + 1;
+    share.onclick = () => navigator.clipboard.writeText("Close Words #" + idx + " — found it in " + n + " guesses \u{1F525}").then(
+      () => { share.textContent = "Copied!"; }, () => {});
+    card.appendChild(share);
+  }
+  const again = document.createElement("button");
+  again.textContent = "Play another";
+  again.onclick = () => { const nx = (PUZZLES.indexOf(p) + 1) % PUZZLES.length; $("puzzle-select").value = nx; load(nx); };
+  card.appendChild(again);
+}
+
+/* ---- init ---- */
+const sel = $("puzzle-select");
+PUZZLES.forEach((pp, i) => {
+  const o = document.createElement("option");
+  o.value = i;
+  o.textContent = "Puzzle " + (i + 1) + " (" + pp.level + ")";
+  sel.appendChild(o);
+});
+sel.onchange = () => load(Number(sel.value));
+$("guess-btn").onclick = submitGuess;
+$("guess-input").addEventListener("keydown", e => { if (e.key === "Enter") submitGuess(); });
+$("hint-btn").onclick = giveHint;
+$("giveup-btn").onclick = () => { if (!done) win(true); };
+const params = new URLSearchParams(location.search);
+const start = params.has("p")
+  ? Math.min(Math.max(Number(params.get("p")) - 1, 0), PUZZLES.length - 1)
+  : Math.floor(Date.now() / 86400000) % PUZZLES.length;
+load(start);
+sel.value = start;
+</script>
+</body>
+</html>

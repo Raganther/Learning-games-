@@ -23,6 +23,9 @@ them for English learners.
 | `prototypes/the-bouncer/` | **The Bouncer** — judgment game: run a nightclub door for words; admit real spellings, reject fakes like "recieve" (spelling) |
 | `prototypes/word-thermometer/` | **Word Thermometer** — continuum game: order gradable words by intensity (cool→warm→hot→boiling) and learn extreme adjectives |
 | `prototypes/red-pen/` | **Red Pen** — editing game: click the one wrong word in each sentence, or approve it if it's clean (proofreading) |
+| `prototypes/close-words/` | **Close Words** — the Contexto-style semantic game for learners: guesses come back with a temperature (burning/warm/cool/cold); winning harvests the word's neighbourhood |
+| `prototypes/double-agents/` | **Double Agents** — polysemy riddles: one word matching two definitions ("bank": money place + river side), spy-dossier theme |
+| `prototypes/perfect-partners/` | **Perfect Partners** — collocation memory-match: flip cards to reunite natural pairs (heavy+rain, catch+a cold), with a usage note per match |
 
 All prototypes are single self-contained `index.html` files — open in any browser, no build step, content editable at the top of each file.
 
